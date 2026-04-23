@@ -1,22 +1,64 @@
-import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
+import { Image } from "react-native";
+import { useRouter } from "expo-router";
 
 export default function HomeScreen() {
-  const { theme } = useTheme();
+  const { theme, isDarkMode, toggleTheme } = useTheme();
 
   return (
     <ScrollView className="flex-1" style={{ backgroundColor: theme.background }}>
-      {/* Header */}
-      <View className="px-5 pt-4 pb-2">
-        <Text className="text-2xl font-bold" style={{ color: theme.text }}>
-          Welcome back,
-        </Text>
-        <Text className="text-3xl font-bold" style={{ color: theme.primary }}>
-          John Doe
-        </Text>
+      {/* Custom Header */}
+      <View className="px-5 pt-12 pb-2 flex-row justify-between items-center">
+        <View>
+          <Text className="text-2xl font-bold" style={{ color: theme.text }}>
+            Welcome back,
+          </Text>
+          <Text className="text-3xl font-bold" style={{ color: theme.primary }}>
+            John Doe
+          </Text>
+        </View>
+        <TouchableOpacity onPress={toggleTheme} className="p-2">
+          <Ionicons
+            name={isDarkMode ? "sunny-outline" : "moon-outline"}
+            size={28}
+            color={theme.text}
+          />
+        </TouchableOpacity>
       </View>
+
+      {/* Hero Promo Card */}
+    <View className="px-5 mt-2">
+        <View className="relative rounded-2xl overflow-hidden h-40">
+            {/* Background Image */}
+            <Image
+                source={{ uri: 'https://images.pexels.com/photos/3806249/pexels-photo-3806249.jpeg?auto=compress&cs=tinysrgb&w=600' }}
+                className="absolute w-full h-full"
+                resizeMode="cover"
+            />
+            {/* Dark Overlay */}
+            <View className="absolute w-full h-full bg-black/40" />
+            
+            {/* Content */}
+            <View className="flex-1 p-5 justify-center">
+                <Text className="text-white text-2xl font-bold mb-1">
+                    Need Car Service?
+                </Text>
+                <Text className="text-white text-sm mb-4 opacity-90">
+                    Book your appointment now and get 10% off on first service!
+                </Text>
+                <TouchableOpacity
+                    className="bg-accent self-start px-6 py-2 rounded-full"
+                    style={{ backgroundColor: '#FFD700' }}
+                    onPress={() => router.push('/booking')}
+                >
+                    <Text className="text-black font-bold">Book Now</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    </View>
 
       {/* My Vehicles */}
       <View className="px-5 mt-4">
@@ -74,7 +116,7 @@ export default function HomeScreen() {
   );
 }
 
-// Helper components
+// Helper components (unchanged)
 const VehicleCard = ({ name, plate, year, theme }) => (
   <View
     className="mr-3 p-4 rounded-xl"
