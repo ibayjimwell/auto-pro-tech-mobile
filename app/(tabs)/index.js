@@ -120,6 +120,76 @@ export default function HomeScreen() {
         </View>
     </View>
 
+    {/* Upcoming Appointment */}
+    <View className="px-5 mt-6">
+        <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-xl font-semibold" style={{ color: theme.text }}>
+                Upcoming Appointment
+            </Text>
+            <Link href="/appointments">
+                <Text className="text-base" style={{ color: theme.primary }}>
+                    View All
+                </Text>
+            </Link>
+        </View>
+
+        <View className="p-4 rounded-xl" style={{ backgroundColor: theme.surface }}>
+            {/* Service & Vehicle */}
+            <View className="flex-row justify-between items-start mb-2">
+                <View>
+                    <Text className="text-lg font-bold" style={{ color: theme.text }}>
+                        PMS (Preventive Maintenance)
+                    </Text>
+                    <Text className="text-sm" style={{ color: theme.textSecondary }}>
+                        Toyota Vios
+                    </Text>
+                </View>
+                <View
+                    className="px-3 py-1 rounded-full"
+                    style={{ backgroundColor: theme.success + '20' }}
+                >
+                    <Text className="text-xs font-semibold" style={{ color: theme.success }}>
+                        CONFIRMED
+                    </Text>
+                </View>
+            </View>
+
+            {/* Date & Time */}
+            <View className="flex-row items-center mb-3">
+                <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
+                <Text className="text-sm ml-1 mr-4" style={{ color: theme.textSecondary }}>
+                    2024-01-20
+                </Text>
+                <Ionicons name="time-outline" size={16} color={theme.textSecondary} />
+                <Text className="text-sm ml-1" style={{ color: theme.textSecondary }}>
+                    09:00 AM
+                </Text>
+            </View>
+
+            {/* Divider */}
+            <View className="border-t mb-3" style={{ borderColor: theme.border }} />
+
+            {/* Cost & Track Button */}
+            <View className="flex-row justify-between items-center">
+                <View>
+                    <Text className="text-xs" style={{ color: theme.textSecondary }}>
+                        Estimated Cost
+                    </Text>
+                    <Text className="text-xl font-bold" style={{ color: theme.primary }}>
+                        ₱3,500
+                    </Text>
+                </View>
+                <TouchableOpacity
+                    className="bg-primary px-6 py-2 rounded-full"
+                    style={{ backgroundColor: theme.primary }}
+                    onPress={() => router.push('/tracking')}
+                >
+                    <Text className="text-white font-semibold">Track</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    </View>
+
       {/* My Vehicles */}
       <View className="px-5 mt-4">
         <View className="flex-row justify-between items-center mb-2">
