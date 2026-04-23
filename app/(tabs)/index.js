@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 
 export default function HomeScreen() {
   const { theme, isDarkMode, toggleTheme } = useTheme();
+  const router = useRouter();
 
   return (
     <ScrollView className="flex-1" style={{ backgroundColor: theme.background }}>
@@ -57,6 +58,65 @@ export default function HomeScreen() {
                     <Text className="text-black font-bold">Book Now</Text>
                 </TouchableOpacity>
             </View>
+        </View>
+    </View>
+
+    {/* Quick Actions */}
+    <View className="px-5 mt-6">
+        <Text className="text-xl font-semibold mb-3" style={{ color: theme.text }}>
+            Quick Actions
+        </Text>
+        <View className="flex-row justify-between">
+            {/* Book Service */}
+            <TouchableOpacity
+                className="flex-1 bg-surface mr-2 p-4 rounded-xl items-center"
+                style={{ backgroundColor: theme.surface }}
+                onPress={() => router.push('/booking')}
+            >
+                <View
+                    className="w-12 h-12 rounded-full items-center justify-center mb-2"
+                    style={{ backgroundColor: theme.primary + '20' }}
+                >
+                    <Ionicons name="calendar-outline" size={24} color={theme.primary} />
+                </View>
+                <Text className="text-sm font-semibold" style={{ color: theme.text }}>
+                    Book Service
+                </Text>
+            </TouchableOpacity>
+
+            {/* Track Status */}
+            <TouchableOpacity
+                className="flex-1 bg-surface mx-2 p-4 rounded-xl items-center"
+                style={{ backgroundColor: theme.surface }}
+                onPress={() => router.push('/tracking')}
+            >
+                <View
+                    className="w-12 h-12 rounded-full items-center justify-center mb-2"
+                    style={{ backgroundColor: theme.accent + '20' }}
+                >
+                    <Ionicons name="location-outline" size={24} color={theme.accent} />
+                </View>
+                <Text className="text-sm font-semibold" style={{ color: theme.text }}>
+                    Track Status
+                </Text>
+            </TouchableOpacity>
+
+            {/* Pay Invoice */}
+            <TouchableOpacity
+                className="flex-1 bg-surface ml-2 p-4 rounded-xl items-center"
+                style={{ backgroundColor: theme.surface }}
+                onPress={() => router.push('/invoice')}
+            >
+                <View
+                    className="w-12 h-12 rounded-full items-center justify-center mb-2"
+                    style={{ backgroundColor: theme.success + '20' }}
+                >
+                    <Ionicons name="card-outline" size={24} color={theme.success} />
+                </View>
+                <Text className="text-sm font-semibold" style={{ color: theme.text }}>
+                    Pay Invoice
+                </Text>
+            </TouchableOpacity>
         </View>
     </View>
 
