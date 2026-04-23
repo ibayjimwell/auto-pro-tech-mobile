@@ -1,50 +1,40 @@
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
-import { useTheme } from "../context/ThemeContext";
+import { useTheme } from "../../context/ThemeContext";
 
-export default function InvoiceScreen() {
+export default function EstimateScreen() {
   const { theme } = useTheme();
 
   const lineItems = [
-    { name: "Labor Charge", price: "₱2,000", description: "Standard labor for preventive maintenance service (2 hours)" },
+    { name: "Labor Charge", price: "₱2,000", description: "Standard labor for preventive maintenance service" },
     { name: "Synthetic Engine Oil (5L)", price: "₱1,200", description: "Full synthetic motor oil replacement" },
     { name: "Oil Filter", price: "₱350", description: "OEM replacement filter" },
     { name: "Air Filter", price: "₱250", description: "Cabin air filter replacement" },
     { name: "Environmental Fee", price: "₱100", description: "Disposal and recycling fee" },
   ];
 
-  const total = 3900;
+  const subtotal = 3900;
 
   return (
     <ScrollView className="flex-1" style={{ backgroundColor: theme.background }}>
       <View className="px-5 pt-4">
         {/* Header */}
         <View className="mb-4">
-          <Text className="text-sm" style={{ color: theme.error }}>
-            PAYMENT DUE
+          <Text className="text-sm" style={{ color: theme.warning }}>
+            Pending Approval
           </Text>
           <Text className="text-2xl font-bold mt-1" style={{ color: theme.text }}>
-            Final Invoice
+            Service Estimate
           </Text>
         </View>
 
-        {/* Invoice Details */}
+        {/* Estimate Details */}
         <View className="p-4 rounded-xl mb-4" style={{ backgroundColor: theme.surface }}>
-          <View className="flex-row justify-between mb-2">
-            <Text className="text-sm" style={{ color: theme.textSecondary }}>
-              INVOICE ID
-            </Text>
-            <Text className="text-sm" style={{ color: theme.textSecondary }}>
-              Date Issued
-            </Text>
-          </View>
-          <View className="flex-row justify-between mb-4">
-            <Text className="text-lg font-semibold" style={{ color: theme.text }}>
-              INV-2024-001
-            </Text>
-            <Text className="text-base" style={{ color: theme.text }}>
-              4/23/2026
-            </Text>
-          </View>
+          <Text className="text-sm mb-2" style={{ color: theme.textSecondary }}>
+            ESTIMATE ID
+          </Text>
+          <Text className="text-lg font-semibold mb-4" style={{ color: theme.text }}>
+            EST-2024-001
+          </Text>
 
           <View className="mb-2">
             <Text className="text-sm" style={{ color: theme.textSecondary }}>
@@ -55,7 +45,7 @@ export default function InvoiceScreen() {
             </Text>
           </View>
 
-          <View>
+          <View className="mb-2">
             <Text className="text-sm" style={{ color: theme.textSecondary }}>
               Vehicle
             </Text>
@@ -66,11 +56,20 @@ export default function InvoiceScreen() {
               ABC 1234
             </Text>
           </View>
+
+          <View>
+            <Text className="text-sm" style={{ color: theme.textSecondary }}>
+              Estimated Duration
+            </Text>
+            <Text className="text-base" style={{ color: theme.text }}>
+              2 hours
+            </Text>
+          </View>
         </View>
 
-        {/* Service Details */}
+        {/* Cost Breakdown */}
         <Text className="text-xl font-semibold mb-3" style={{ color: theme.text }}>
-          Service Details
+          Cost Breakdown
         </Text>
 
         {lineItems.map((item, index) => (
@@ -95,7 +94,7 @@ export default function InvoiceScreen() {
               Subtotal
             </Text>
             <Text className="text-lg font-bold" style={{ color: theme.text }}>
-              ₱{total.toLocaleString()}
+              ₱{subtotal.toLocaleString()}
             </Text>
           </View>
           <View className="flex-row justify-between mb-2">
@@ -108,42 +107,38 @@ export default function InvoiceScreen() {
           </View>
           <View className="flex-row justify-between mt-2 pt-2 border-t border-gray-200">
             <Text className="text-xl font-bold" style={{ color: theme.text }}>
-              Total Due
+              Estimated Total
             </Text>
             <Text className="text-xl font-bold" style={{ color: theme.primary }}>
-              ₱{total.toLocaleString()}
+              ₱{subtotal.toLocaleString()}
             </Text>
           </View>
         </View>
 
-        {/* Payment Methods */}
-        <Text className="text-xl font-semibold mt-6 mb-3" style={{ color: theme.text }}>
-          SELECT PAYMENT METHOD
+        {/* Disclaimer */}
+        <Text className="text-xs my-4" style={{ color: theme.textSecondary }}>
+          * This is an estimate based on initial inspection. Final cost may vary depending on actual parts required and labor time. You will be notified of any significant changes before work proceeds.
         </Text>
 
-        <TouchableOpacity
-          className="p-4 rounded-xl mb-3 flex-row items-center"
-          style={{ backgroundColor: theme.surface }}
-        >
-          <View className="w-10 h-10 rounded-full bg-green-100 justify-center items-center mr-3">
-            <Text className="text-2xl">💵</Text>
-          </View>
-          <Text className="text-lg font-semibold" style={{ color: theme.text }}>
-            Pay with Cash
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          className="p-4 rounded-xl mb-8 flex-row items-center"
-          style={{ backgroundColor: theme.surface }}
-        >
-          <View className="w-10 h-10 rounded-full bg-blue-100 justify-center items-center mr-3">
-            <Text className="text-2xl">💳</Text>
-          </View>
-          <Text className="text-lg font-semibold" style={{ color: theme.text }}>
-            Pay with Stripe
-          </Text>
-        </TouchableOpacity>
+        {/* Action Buttons */}
+        <View className="flex-row justify-between mb-8">
+          <TouchableOpacity
+            className="flex-1 py-4 rounded-lg mr-2"
+            style={{ backgroundColor: theme.success }}
+          >
+            <Text className="text-white text-center font-semibold text-lg">
+              Confirm & Proceed
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="flex-1 py-4 rounded-lg ml-2"
+            style={{ backgroundColor: theme.error }}
+          >
+            <Text className="text-white text-center font-semibold text-lg">
+              Reject Estimate
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </ScrollView>
   );

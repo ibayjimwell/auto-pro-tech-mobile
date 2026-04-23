@@ -111,6 +111,20 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+    <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginVertical: 10 }}>
+        <Link href="/login" asChild>
+            <TouchableOpacity style={{ padding: 10, backgroundColor: theme.primary, borderRadius: 8 }}>
+            <Text style={{ color: '#fff' }}>Go to Login</Text>
+            </TouchableOpacity>
+        </Link>
+        <Link href="/signup" asChild>
+            <TouchableOpacity style={{ padding: 10, backgroundColor: theme.accent, borderRadius: 8 }}>
+            <Text style={{ color: '#000' }}>Go to Sign Up</Text>
+            </TouchableOpacity>
+        </Link>
+    </View>
+
     </ScrollView>
   );
 }

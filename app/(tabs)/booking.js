@@ -2,7 +2,7 @@ import { View, Text, ScrollView, TouchableOpacity, Modal } from "react-native";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-import { useTheme } from "../context/ThemeContext";
+import { useTheme } from "../../context/ThemeContext";
 
 export default function BookingScreen() {
   const { theme } = useTheme();
