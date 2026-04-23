@@ -29,6 +29,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="vehicles"
         options={{
+          headerShown: false,
           title: "Vehicles",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="car-outline" size={size} color={color} />
@@ -38,6 +39,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
+          headerShown: false,
           title: "Profile",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />

@@ -11,7 +11,6 @@ export default function VehiclesScreen() {
     { id: 2, name: "Honda Civic", plate: "XYZ 5678", year: "2022", type: "Sedan", color: "Black" },
   ]);
 
-  // Form state for adding a vehicle
   const [newVehicle, setNewVehicle] = useState({
     name: "",
     plate: "",
@@ -29,24 +28,27 @@ export default function VehiclesScreen() {
   };
 
   return (
-    <ScrollView className="flex-1" style={{ backgroundColor: theme.background }}>
-      <View className="px-5 pt-4">
-        <Text className="text-2xl font-bold mb-4" style={{ color: theme.text }}>
-          My Vehicles
-        </Text>
+    <View className="flex-1" style={{ backgroundColor: theme.background }}>
+      <ScrollView className="flex-1 px-5 pt-12">
+        {/* Header with Title and Add Button */}
+        <View className="flex-row justify-between items-center mb-4">
+          <Text className="text-2xl font-bold" style={{ color: theme.text }}>
+            My Vehicles
+          </Text>
+          <TouchableOpacity
+            className="w-10 h-10 rounded-full justify-center items-center"
+            style={{ backgroundColor: theme.primary }}
+            onPress={() => setModalVisible(true)}
+          >
+            <Ionicons name="add" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Vehicle Cards */}
         {vehicles.map((vehicle) => (
           <VehicleCard key={vehicle.id} vehicle={vehicle} theme={theme} />
         ))}
-      </View>
-
-      {/* Add Vehicle Button */}
-      <TouchableOpacity
-        className="absolute bottom-6 right-6 w-14 h-14 rounded-full justify-center items-center"
-        style={{ backgroundColor: theme.primary }}
-        onPress={() => setModalVisible(true)}
-      >
-        <Ionicons name="add" size={30} color="#FFFFFF" />
-      </TouchableOpacity>
+      </ScrollView>
 
       {/* Add Vehicle Modal */}
       <Modal
@@ -164,19 +166,22 @@ export default function VehiclesScreen() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </View>
   );
 }
 
+// VehicleCard
 const VehicleCard = ({ vehicle, theme }) => (
   <View className="p-4 mb-3 rounded-xl" style={{ backgroundColor: theme.surface }}>
-    <View className="flex-row justify-between items-center">
-      <View>
-        <Text className="text-lg font-bold" style={{ color: theme.text }}>
+    <View className="flex-row justify-between items-start">
+      <View className="flex-1">
+        <Text className="text-lg font-bold mb-1" style={{ color: theme.text }}>
           {vehicle.name}
         </Text>
-        <Text style={{ color: theme.textSecondary }}>{vehicle.plate}</Text>
-        <Text style={{ color: theme.textSecondary }}>
+        <Text className="text-base mb-1" style={{ color: theme.textSecondary }}>
+          {vehicle.plate}
+        </Text>
+        <Text className="text-sm" style={{ color: theme.textSecondary }}>
           {vehicle.year} {vehicle.type} {vehicle.color}
         </Text>
       </View>

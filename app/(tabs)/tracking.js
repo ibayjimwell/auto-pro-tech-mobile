@@ -1,11 +1,11 @@
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 
 export default function TrackingScreen() {
   const { theme } = useTheme();
-  const [currentStage, setCurrentStage] = useState(3); // 0: Pending, 1: Confirmed, 2: Inspection, 3: Waiting, 4: Progress, 5: Completed
+  const [currentStage, setCurrentStage] = useState(4); // 0: Pending, 1: Confirmed, 2: Inspection, 3: Waiting, 4: Progress, 5: Completed
 
   const stages = [
     { name: "Pending", description: "Your appointment request has been received and is awaiting confirmation." },
@@ -16,13 +16,64 @@ export default function TrackingScreen() {
     { name: "Completed", description: "All services finished. Vehicle is ready for pickup or delivery." },
   ];
 
+  // Example task data (read‑only, representing work done by the shop)
   const tasks = [
-    { id: 1, name: "Removing left front wheel", completed: true },
-    { id: 2, name: "Changing engine oil", completed: false },
-    { id: 3, name: "Inspecting brake pads", completed: false },
-    { id: 4, name: "Rotating tires", completed: false },
-    { id: 5, name: "Final safety check", completed: false },
+    {
+      id: 1,
+      name: "Inspect and replace spark plugs",
+      completed: false,
+      subtasks: [
+        { id: 11, name: "Check gap", completed: true },
+        { id: 12, name: "Remove old plugs", completed: true },
+        { id: 13, name: "Install new plugs", completed: false },
+      ],
+    },
+    {
+      id: 2,
+      name: "Replace air filter",
+      completed: false,
+      subtasks: [
+        { id: 21, name: "Remove old filter", completed: true },
+        { id: 22, name: "Install new filter", completed: false },
+      ],
+    },
+    {
+      id: 3,
+      name: "Replace fuel filter",
+      completed: false,
+      subtasks: [],
+    },
+    {
+      id: 4,
+      name: "Check ignition wires",
+      completed: false,
+      subtasks: [],
+    },
+    {
+      id: 5,
+      name: "Scan for fault codes",
+      completed: true,
+      subtasks: [
+        { id: 51, name: "Clear old codes", completed: true },
+      ],
+    },
   ];
+
+  // Calculate overall progress
+  const progress = useMemo(() => {
+    let total = 0;
+    let completed = 0;
+    tasks.forEach(task => {
+      if (task.subtasks.length > 0) {
+        total += task.subtasks.length;
+        completed += task.subtasks.filter(st => st.completed).length;
+      } else {
+        total += 1;
+        if (task.completed) completed += 1;
+      }
+    });
+    return total > 0 ? (completed / total) * 100 : 0;
+  }, [tasks]);
 
   const simulateNextStage = () => {
     if (currentStage < stages.length - 1) {
@@ -68,9 +119,7 @@ export default function TrackingScreen() {
           <View key={index} className="flex-row mb-4">
             <View className="items-center mr-3">
               <View
-                className={`w-8 h-8 rounded-full justify-center items-center ${
-                  index <= currentStage ? "bg-primary" : "bg-gray-300"
-                }`}
+                className="w-8 h-8 rounded-full justify-center items-center"
                 style={{ backgroundColor: index <= currentStage ? theme.primary : theme.border }}
               >
                 {index < currentStage ? (
@@ -102,22 +151,64 @@ export default function TrackingScreen() {
         {/* Mechanic's Current Tasks (only shown when in progress) */}
         {currentStage === 4 && (
           <View className="mt-2">
-            <Text className="text-lg font-semibold mb-2" style={{ color: theme.text }}>
-              MECHANIC'S CURRENT TASKS
-            </Text>
+            <View className="flex-row justify-between items-center mb-2">
+              <Text className="text-lg font-semibold" style={{ color: theme.text }}>
+                MECHANIC'S CURRENT TASKS
+              </Text>
+              <Text className="text-sm font-semibold" style={{ color: theme.primary }}>
+                {Math.round(progress)}% done
+              </Text>
+            </View>
+
+            {/* Progress Bar */}
+            <View className="h-2 bg-gray-200 rounded-full mb-4" style={{ backgroundColor: theme.border }}>
+              <View
+                className="h-2 rounded-full"
+                style={{
+                  width: `${progress}%`,
+                  backgroundColor: theme.primary,
+                }}
+              />
+            </View>
+
+            {/* Read‑only Task List with Subtasks */}
             {tasks.map((task) => (
-              <View key={task.id} className="flex-row items-center mb-2">
-                <Ionicons
-                  name={task.completed ? "checkbox" : "square-outline"}
-                  size={20}
-                  color={task.completed ? theme.success : theme.textSecondary}
-                />
-                <Text
-                  className={`ml-2 ${task.completed ? "line-through" : ""}`}
-                  style={{ color: task.completed ? theme.textSecondary : theme.text }}
-                >
-                  {task.name}
-                </Text>
+              <View key={task.id} className="mb-4">
+                {/* Main Task */}
+                <View className="flex-row items-center mb-2">
+                  <Ionicons
+                    name={task.completed ? "checkmark-circle" : "ellipse-outline"}
+                    size={20}
+                    color={theme.primary}
+                  />
+                  <Text
+                    className={`ml-2 text-base font-medium ${task.completed ? "line-through" : ""}`}
+                    style={{ color: task.completed ? theme.textSecondary : theme.text }}
+                  >
+                    {task.name}
+                  </Text>
+                </View>
+
+                {/* Subtasks */}
+                {task.subtasks.length > 0 && (
+                  <View className="ml-6">
+                    {task.subtasks.map((subtask) => (
+                      <View key={subtask.id} className="flex-row items-center mb-1">
+                        <Ionicons
+                          name={subtask.completed ? "checkmark-circle" : "ellipse-outline"}
+                          size={16}
+                          color={theme.primary}
+                        />
+                        <Text
+                          className={`ml-2 text-sm ${subtask.completed ? "line-through" : ""}`}
+                          style={{ color: subtask.completed ? theme.textSecondary : theme.text }}
+                        >
+                          {subtask.name}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             ))}
           </View>

@@ -84,7 +84,7 @@ export default function BookingScreen() {
               <Text style={{ color: theme.textSecondary }}>{vehicle.plate}</Text>
             </View>
             <Ionicons
-              name={selectedVehicle?.id === vehicle.id ? "checkmark-circle" : "chevron-forward"}
+              name={selectedVehicle?.id === vehicle.id ? "checkmark-circle" : ""}
               size={24}
               color={selectedVehicle?.id === vehicle.id ? theme.primary : theme.textSecondary}
             />

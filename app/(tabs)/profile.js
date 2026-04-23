@@ -13,7 +13,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView className="flex-1" style={{ backgroundColor: theme.background }}>
-      <View className="px-5 pt-4">
+      <View className="px-5 pt-12">
         {/* Profile Header */}
         <View className="items-center mb-6">
           <View className="w-24 h-24 rounded-full bg-primary justify-center items-center mb-3">
@@ -63,7 +63,7 @@ export default function ProfileScreen() {
             Recent History
           </Text>
           <Link href="/history">
-            <Text style={{ color: theme.primary }}>View All</Text>
+            <Text className="text-base font-medium" style={{ color: theme.primary }}>View All</Text>
           </Link>
         </View>
 

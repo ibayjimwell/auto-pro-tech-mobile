@@ -48,7 +48,7 @@ export default function HomeScreen() {
                     Need Car Service?
                 </Text>
                 <Text className="text-white text-sm mb-4 opacity-90">
-                    Book your appointment now and get 10% off on first service!
+                    Book your appointment now on AutoProTech!
                 </Text>
                 <TouchableOpacity
                     className="bg-accent self-start px-6 py-2 rounded-full"
@@ -80,7 +80,7 @@ export default function HomeScreen() {
                     <Ionicons name="calendar-outline" size={24} color={theme.primary} />
                 </View>
                 <Text className="text-sm font-semibold" style={{ color: theme.text }}>
-                    Book Service
+                    Booking
                 </Text>
             </TouchableOpacity>
 
@@ -97,7 +97,7 @@ export default function HomeScreen() {
                     <Ionicons name="location-outline" size={24} color={theme.accent} />
                 </View>
                 <Text className="text-sm font-semibold" style={{ color: theme.text }}>
-                    Track Status
+                    Tracking
                 </Text>
             </TouchableOpacity>
 
@@ -114,7 +114,7 @@ export default function HomeScreen() {
                     <Ionicons name="card-outline" size={24} color={theme.success} />
                 </View>
                 <Text className="text-sm font-semibold" style={{ color: theme.text }}>
-                    Pay Invoice
+                    Payment
                 </Text>
             </TouchableOpacity>
         </View>
@@ -127,7 +127,7 @@ export default function HomeScreen() {
                 Upcoming Appointment
             </Text>
             <Link href="/appointments">
-                <Text className="text-base" style={{ color: theme.primary }}>
+                <Text className="text-base font-medium" style={{ color: theme.primary }}>
                     View All
                 </Text>
             </Link>
@@ -191,92 +191,103 @@ export default function HomeScreen() {
     </View>
 
       {/* My Vehicles */}
-      <View className="px-5 mt-4">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xl font-semibold" style={{ color: theme.text }}>
-            My Vehicles
-          </Text>
-          <Link href="/vehicles">
-            <Text className="text-base" style={{ color: theme.primary }}>
-              Manage &gt;
-            </Text>
-          </Link>
+        <View className="px-5 mt-6">
+            <View className="flex-row justify-between items-center mb-3">
+                <Text className="text-xl font-semibold" style={{ color: theme.text }}>
+                    My Vehicles
+                </Text>
+                <Link href="/vehicles">
+                <Text className="text-base font-medium" style={{ color: theme.primary }}>
+                    Manage
+                </Text>
+                </Link>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <VehicleCard
+                    name="Toyota Vios"
+                    plate="ABC 1234"
+                    year="2021"
+                    theme={theme}
+                />
+                <VehicleCard
+                    name="Honda Civic"
+                    plate="XYZ 5678"
+                    year="2022"
+                    theme={theme}
+                />
+            </ScrollView>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <VehicleCard
-            name="Toyota Vios"
-            plate="ABC 1234"
-            year="2021"
-            theme={theme}
-          />
-          <VehicleCard
-            name="Honda Civic"
-            plate="XYZ 5678"
-            year="2022"
-            theme={theme}
-          />
-        </ScrollView>
-      </View>
 
-      {/* Popular Services */}
-      <View className="px-5 mt-6">
-        <Text className="text-xl font-semibold mb-3" style={{ color: theme.text }}>
-          Popular Services
-        </Text>
-        <ServiceCard
-          name="PMS"
-          duration="2 hours"
-          price="₱3,500"
-          theme={theme}
-        />
-        <ServiceCard
-          name="Oil Change"
-          duration="45 mins"
-          price="₱1,500"
-          theme={theme}
-        />
-        <ServiceCard
-          name="Tire Rotation"
-          duration="30 mins"
-          price="₱800"
-          theme={theme}
-        />
-      </View>
+        {/* Popular Services */}
+        <View className="px-5 mt-6 mb-6">
+            <Text className="text-xl font-semibold mb-3" style={{ color: theme.text }}>
+                Popular Services
+            </Text>
+            <ServiceCard
+                name="PMS"
+                duration="2 hours"
+                price="₱3,500"
+                theme={theme}
+            />
+            <ServiceCard
+                name="Oil Change"
+                duration="45 mins"
+                price="₱1,500"
+                theme={theme}
+            />
+            <ServiceCard
+                name="Tire Rotation"
+                duration="30 mins"
+                price="₱800"
+                theme={theme}
+            />
+        </View>
     </ScrollView>
   );
 }
 
-// Helper components (unchanged)
+// Helper components
 const VehicleCard = ({ name, plate, year, theme }) => (
-  <View
-    className="mr-3 p-4 rounded-xl"
+  <TouchableOpacity
+    className="mr-3 p-4 rounded-xl w-40"
     style={{ backgroundColor: theme.surface }}
+    onPress={() => {/* navigate to vehicle details or booking */}}
   >
-    <Text className="text-lg font-bold" style={{ color: theme.text }}>
+    <Text className="text-lg font-bold mb-1" style={{ color: theme.text }}>
       {name}
     </Text>
-    <Text style={{ color: theme.textSecondary }}>
+    <Text className="text-sm mb-2" style={{ color: theme.textSecondary }}>
       {plate} • {year}
     </Text>
-    <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-  </View>
+    <View className="flex-row justify-end">
+      <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+    </View>
+  </TouchableOpacity>
 );
 
 const ServiceCard = ({ name, duration, price, theme }) => (
   <TouchableOpacity
-    className="flex-row justify-between items-center p-4 mb-2 rounded-xl"
+    className="flex-row justify-between items-center p-4 mb-3 rounded-xl"
     style={{ backgroundColor: theme.surface }}
+    onPress={() => {/* navigate to booking with service pre-selected */}}
   >
-    <View>
-      <Text className="text-lg font-semibold" style={{ color: theme.text }}>
+    <View className="flex-1">
+      <Text className="text-lg font-bold mb-1" style={{ color: theme.text }}>
         {name}
       </Text>
-      <Text style={{ color: theme.textSecondary }}>{duration}</Text>
+      <Text className="text-sm" style={{ color: theme.textSecondary }}>
+        {duration}
+      </Text>
     </View>
     <View className="flex-row items-center">
-      <Text className="text-lg font-bold mr-2" style={{ color: theme.primary }}>
-        {price}
-      </Text>
+      <View className="items-end mr-3">
+        <Text className="text-lg font-bold" style={{ color: theme.primary }}>
+          {price}
+        </Text>
+        <Text className="text-sm" style={{ color: theme.textSecondary }}>
+          Starting
+        </Text>
+      </View>
       <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
     </View>
   </TouchableOpacity>
