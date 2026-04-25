@@ -19,51 +19,42 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-
-  const validateField = (field, value) => {
-    try {
-      loginSchema.parse({ emailOrPhone, password });
-      setErrors({});
-      return true;
-    } catch (err) {
-      const formattedErrors = {};
-      err.issues.forEach((issue) => {
-        formattedErrors[issue.path[0]] = issue.message;
-      });
-      setErrors(formattedErrors);
-      return false;
-    }
-  };
+  const [loginError, setLoginError] = useState(""); // inline error for wrong credentials
 
   const handleFieldChange = (field, value) => {
     if (field === "emailOrPhone") setEmailOrPhone(value);
     else setPassword(value);
+    // Clear field-specific error if exists
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
+    // Clear global login error when user types
+    if (loginError) setLoginError("");
   };
 
   const handleLogin = async () => {
-    try {
-      loginSchema.parse({ emailOrPhone, password });
-      setErrors({});
-    } catch (err) {
-      const formattedErrors = {};
-      err.issues.forEach((issue) => {
-        formattedErrors[issue.path[0]] = issue.message;
-      });
-      setErrors(formattedErrors);
-      return;
-    }
+      setLoginError("");
+      try {
+        loginSchema.parse({ emailOrPhone, password });
+        setErrors({});
+      } catch (err) {
+        const formattedErrors = {};
+        err.issues.forEach((issue) => {
+          formattedErrors[issue.path[0]] = issue.message;
+        });
+        setErrors(formattedErrors);
+        return;
+      }
 
-    setLoading(true);
-    const result = await login(emailOrPhone, password);
-    setLoading(false);
-    if (result.success) {
-      router.replace("/(tabs)");
-    } else {
-      alert(result.message || "Login failed");
-    }
+      setLoading(true);
+      const result = await login(emailOrPhone, password);
+      setLoading(false);
+
+      if (result.success) {
+        router.replace("/(tabs)");
+      } else {
+        setLoginError(result.message || "Login failed. Please try again.");
+      }
   };
 
   return (
@@ -78,6 +69,7 @@ export default function LoginScreen() {
         Your trusted automotive repair partner
       </Text>
 
+      {/* Email / Phone Field */}
       <Text className="text-sm mb-1" style={{ color: theme.text }}>
         Email or Phone Number
       </Text>
@@ -99,6 +91,7 @@ export default function LoginScreen() {
         <Text className="text-xs text-red-500 mb-3">{errors.emailOrPhone}</Text>
       )}
 
+      {/* Password Field */}
       <Text className="text-sm mb-1" style={{ color: theme.text }}>
         Password
       </Text>
@@ -129,7 +122,15 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
       {errors.password && (
-        <Text className="text-xs text-red-500 mb-4">{errors.password}</Text>
+        <Text className="text-xs text-red-500 mb-2">{errors.password}</Text>
+      )}
+
+      {/* Inline login error (e.g., Invalid credentials) */}
+      {loginError ? (
+        <Text className="text-xs text-red-500 mb-4">{loginError}</Text>
+      ) : (
+        /* spacer to keep layout consistent */
+        <View className="mb-4" />
       )}
 
       <TouchableOpacity className="self-end mb-6">
@@ -160,18 +161,6 @@ export default function LoginScreen() {
         <Link href="/signup">
           <Text style={{ color: theme.primary, fontWeight: "600" }}>Sign Up</Text>
         </Link>
-      </View>
-
-      <View className="mt-8 p-4 rounded-lg" style={{ backgroundColor: theme.surface }}>
-        <Text className="font-semibold mb-2" style={{ color: theme.text }}>
-          Demo Credentials:
-        </Text>
-        <Text style={{ color: theme.textSecondary }}>
-          Email/Phone: john@example.com
-        </Text>
-        <Text style={{ color: theme.textSecondary }}>
-          Password: password123
-        </Text>
       </View>
     </View>
   );

@@ -27,17 +27,6 @@ const api = {
     }
     return data;
   },
-
-  // Auth endpoints
-  register(userData) {
-    return this.request('/auth/register', 'POST', userData);
-  },
-  login(credentials) {
-    return this.request('/auth/login', 'POST', credentials);
-  },
-  getMe() {
-    return this.request('/auth/me', 'GET', null, true);
-  },
-};
+}
 
 export default api;

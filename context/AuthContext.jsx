@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../services/api';
+import authApi from '../services/authApi';
 
 const AuthContext = createContext();
 
@@ -10,7 +10,6 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
 
   useEffect(() => {
-    // Load token on app start
     const loadStoredData = async () => {
       const storedToken = await AsyncStorage.getItem('auth_token');
       const storedUser = await AsyncStorage.getItem('auth_user');
@@ -24,27 +23,41 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (emailOrPhone, password) => {
-    const response = await api.login({ emailOrPhone, password });
-    if (response.success) {
-      await AsyncStorage.setItem('auth_token', response.token);
-      await AsyncStorage.setItem('auth_user', JSON.stringify(response.user));
-      setToken(response.token);
-      setUser(response.user);
-      return { success: true };
+    try {
+      const response = await authApi.login({ emailOrPhone, password });
+      if (response.success) {
+        await AsyncStorage.setItem('auth_token', response.token);
+        await AsyncStorage.setItem('auth_user', JSON.stringify(response.user));
+        setToken(response.token);
+        setUser(response.user);
+        return { success: true };
+      }
+      // If response.success is false (e.g., backend returns 200 but false)
+      return { success: false, message: response.message || 'Login failed' };
+    } catch (error) {
+      // This catches errors from api.login (network or 4xx/5xx responses)
+      console.error('Login error:', error);
+      const message = error.message || 'Invalid credentials or network error';
+      return { success: false, message };
     }
-    return { success: false, message: response.message };
   };
 
   const register = async (fullName, email, phone, password) => {
-    const response = await api.register({ fullName, email, phone, password });
-    if (response.success) {
-      await AsyncStorage.setItem('auth_token', response.token);
-      await AsyncStorage.setItem('auth_user', JSON.stringify(response.user));
-      setToken(response.token);
-      setUser(response.user);
-      return { success: true };
+    try {
+      const response = await authApi.register({ fullName, email, phone, password });
+      if (response.success) {
+        await AsyncStorage.setItem('auth_token', response.token);
+        await AsyncStorage.setItem('auth_user', JSON.stringify(response.user));
+        setToken(response.token);
+        setUser(response.user);
+        return { success: true };
+      }
+      return { success: false, message: response.message || 'Registration failed' };
+    } catch (error) {
+      console.error('Register error:', error);
+      const message = error.message || 'Registration failed. Please try again.';
+      return { success: false, message };
     }
-    return { success: false, message: response.message };
   };
 
   const logout = async () => {
