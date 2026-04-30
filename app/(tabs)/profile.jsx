@@ -1,9 +1,10 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState, useEffect } from "react";
+import Modal from "react-native-modal";
 import customersApi from "../../services/customersApi";
 
 export default function ProfileScreen() {
@@ -11,8 +12,10 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ vehicles: 0, visits: 0 });
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Fetch additional stats (vehicles count, appointments count)
+  // Fetch stats
   useEffect(() => {
     const fetchStats = async () => {
       if (!user?.id) return;
@@ -32,22 +35,18 @@ export default function ProfileScreen() {
     fetchStats();
   }, [user]);
 
-  const handleLogout = async () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            await logout();
-            router.replace("/login");
-          },
-        },
-      ]
-    );
+  const handleLogoutConfirm = async () => {
+    setLoggingOut(true);
+    setShowLogoutModal(false);
+    try {
+      await logout();
+      router.replace("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Show error feedback (you can use a toast or inline message)
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   if (loading) {
@@ -58,12 +57,10 @@ export default function ProfileScreen() {
     );
   }
 
-  // Get initials for avatar
   const initials = user?.fullName
     ? user.fullName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
     : "JD";
 
-  // Format join date (createdAt from user object)
   const joinDate = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })
     : "Jan 2023";
@@ -117,7 +114,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Recent History (placeholder - can be implemented later) */}
+        {/* Recent History (placeholder) */}
         <View className="flex-row justify-between items-center mb-3">
           <Text className="text-xl font-semibold" style={{ color: theme.text }}>
             Recent History
@@ -127,7 +124,6 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Dummy history - you can replace with real data from API */}
         <View className="p-4 mb-2 rounded-xl" style={{ backgroundColor: theme.surface }}>
           <View className="flex-row justify-between">
             <Text className="text-base font-semibold" style={{ color: theme.text }}>
@@ -164,15 +160,51 @@ export default function ProfileScreen() {
 
           <TouchableOpacity
             className="flex-row items-center py-4"
-            onPress={handleLogout}
+            onPress={() => setShowLogoutModal(true)}
+            disabled={loggingOut}
           >
             <Ionicons name="log-out-outline" size={24} color={theme.error} />
             <Text className="ml-3 text-base" style={{ color: theme.error }}>
-              Logout
+              {loggingOut ? "Logging out..." : "Logout"}
             </Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        isVisible={showLogoutModal}
+        onBackdropPress={() => setShowLogoutModal(false)}
+        backdropOpacity={0.6}
+        animationIn="fadeIn"
+        animationOut="fadeOut"
+      >
+        <View className="bg-white rounded-2xl p-6" style={{ backgroundColor: theme.surface }}>
+          <Text className="text-xl font-bold mb-2" style={{ color: theme.text }}>
+            Logout
+          </Text>
+          <Text className="text-base mb-6" style={{ color: theme.textSecondary }}>
+            Are you sure you want to logout?
+          </Text>
+          <View className="flex-row justify-end gap-3">
+            <TouchableOpacity
+              className="px-4 py-2 rounded-lg mr-2"
+              onPress={() => setShowLogoutModal(false)}
+            >
+              <Text className="font-semibold" style={{ color: theme.textSecondary }}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="px-4 py-2 rounded-lg"
+              style={{ backgroundColor: theme.error }}
+              onPress={handleLogoutConfirm}
+            >
+              <Text className="text-white font-semibold">Logout</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
