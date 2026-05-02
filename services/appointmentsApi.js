@@ -32,6 +32,10 @@ const appointmentsApi = {
 
   // Get calendar view (grouped by date) – optional
   getCalendarView: (month) => api.request(`/appointments/calendar?month=${month}`, 'GET', null, true),
+
+  checkAvailability: (date, startTime, serviceTypeId) =>
+  api.request('/appointments/check-availability', 'POST', { date, startTime, serviceTypeId }, true),
+
 };
 
 export default appointmentsApi;

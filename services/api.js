@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const API_BASE_URL = 'http://localhost:4000/api/v1'; // Replace with your actual IP for physical device
+export const API_BASE_URL = 'http://192.168.1.2:4000/api/v1'; // Replace with your actual IP for physical device
 
 const api = {
   async request(endpoint, method = 'GET', body = null, requiresAuth = false) {

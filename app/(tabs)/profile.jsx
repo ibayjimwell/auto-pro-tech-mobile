@@ -6,6 +6,7 @@ import { router } from "expo-router";
 import { useState, useEffect } from "react";
 import Modal from "react-native-modal";
 import customersApi from "../../services/customersApi";
+import pushNotificationApi from '../../services/pushNotificationApi';
 
 export default function ProfileScreen() {
   const { theme, isDarkMode, toggleTheme } = useTheme();
@@ -40,6 +41,7 @@ export default function ProfileScreen() {
     setShowLogoutModal(false);
     try {
       await logout();
+      await pushNotificationApi.unregisterToken(token);
       router.replace("/login");
     } catch (error) {
       console.error("Logout error:", error);
