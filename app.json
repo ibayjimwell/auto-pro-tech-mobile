@@ -32,7 +32,6 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/notification-icon.png",
           "color": "#b22222",
           "sounds": [
             "./assets/notification_sound.wav"
@@ -48,7 +47,6 @@
       }
     },
     "notifications": {
-      "icon": "./assets/notification-icon.png",
       "color": "#b22222",
       "iosDisplayInForeground": true,
       "androidMode": "default",
