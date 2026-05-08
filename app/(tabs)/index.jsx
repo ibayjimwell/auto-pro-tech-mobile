@@ -19,14 +19,15 @@ export default function HomeScreen() {
   const [upcomingAppointment, setUpcomingAppointment] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const pushNification = async () => {
-        const token = await registerForPushNotificationsAsync();
-        if (token) {
-            await pushNotificationApi.registerToken(token, Platform.OS);
-        }
-    }
-  }, []);
+  // useEffect(() => {
+  //   const pushNotification = async () => {
+  //       const token = await registerForPushNotificationsAsync();
+  //       if (token) {
+  //           await pushNotificationApi.registerToken(token, Platform.OS);
+  //       }
+  //   }
+  //   pushNotification();
+  // }, []);
 
   const loadUpcomingAppointment = async () => {
     if (!user?.id) return;
