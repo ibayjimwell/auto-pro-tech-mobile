@@ -36,6 +36,12 @@ const appointmentsApi = {
   checkAvailability: (date, startTime, serviceTypeId) =>
   api.request('/appointments/check-availability', 'POST', { date, startTime, serviceTypeId }, true),
 
+  // Customer approval workflow
+  approveEstimate: (id, excludedFindingIds = []) =>
+    api.request(`/appointments/${id}/approve`, 'POST', { excludedFindingIds }, true),
+
+  rejectEstimate: (id, reason) =>
+    api.request(`/appointments/${id}/reject`, 'POST', { reason }, true),
 };
 
 export default appointmentsApi;
