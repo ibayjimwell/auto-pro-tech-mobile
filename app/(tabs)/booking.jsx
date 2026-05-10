@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Platform, Alert, Modal as NativeModal } from "react-native";
 import { useState, useEffect, useCallback } from "react";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Calendar } from "react-native-calendars";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import RNModal from "react-native-modal";
@@ -14,7 +14,7 @@ import serviceTypesApi from "../../services/serviceTypesApi";
 import vehiclesApi from "../../services/vehiclesApi";
 import { notify } from "../../lib/notify";
 
-// Helper: convert "HH:MM:SS" to "h:mm AM/PM"
+// --- Helpers: Time Formatting ---
 const formatTime12h = (time24) => {
   if (!time24) return "";
   const [hour, minute] = time24.split(":");
@@ -24,7 +24,6 @@ const formatTime12h = (time24) => {
   return `${h}:${minute} ${ampm}`;
 };
 
-// Helper: convert Date object to "HH:MM:SS"
 const dateToTimeString = (date) => {
   return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:00`;
 };
@@ -34,6 +33,7 @@ export default function BookingScreen() {
   const { user } = useAuth();
   const customerId = user?.id;
 
+  // --- State Management ---
   const [loading, setLoading] = useState(true);
   const [services, setServices] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -51,12 +51,12 @@ export default function BookingScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [availabilityModal, setAvailabilityModal] = useState({ visible: false, available: false, message: "" });
 
+  // --- Data Fetching Logic ---
   const loadServices = async () => {
     try {
       const res = await serviceTypesApi.listActive();
       let data = res.data?.data || res.data || res;
-      if (!Array.isArray(data)) data = [];
-      setServices(data);
+      setServices(Array.isArray(data) ? data : []);
     } catch (err) { console.error(err); }
   };
 
@@ -65,8 +65,7 @@ export default function BookingScreen() {
     try {
       const res = await vehiclesApi.listByCustomer(customerId);
       let vehicleArray = res.data?.data || res.data || res;
-      if (!Array.isArray(vehicleArray)) vehicleArray = [];
-      setVehicles(vehicleArray);
+      setVehicles(Array.isArray(vehicleArray) ? vehicleArray : []);
     } catch (err) { console.error(err); }
   };
 
@@ -104,40 +103,31 @@ export default function BookingScreen() {
     loadAvailableSlots();
   }, [selectedDate, selectedService]);
 
-  // WebSocket
+  // --- WebSocket Integration ---
   useEffect(() => {
     const socketUrl = API_BASE_URL.replace("/api/v1", "");
     const newSocket = io(socketUrl, { transports: ["websocket"] });
     setSocket(newSocket);
-    newSocket.on("connect", () => console.log("Socket connected"));
     newSocket.on("appointmentChanged", (data) => {
       loadAppointments();
       if (data.type === "created" && data.appointment.customerId === customerId) {
         notify.success("New appointment booked!");
-      } else if (data.type === "statusChanged" && data.appointment.customerId === customerId) {
-        notify.info(`Appointment status changed to ${data.appointment.status}`);
       }
     });
     return () => newSocket.disconnect();
   }, [customerId]);
 
+  // --- Interaction Handlers ---
   const getMarkedDates = () => {
     const marked = {};
-    const countMap = {};
     appointments.forEach((apt) => {
       if (apt.status !== "CANCELLED") {
-        countMap[apt.appointmentDate] = (countMap[apt.appointmentDate] || 0) + 1;
+        marked[apt.appointmentDate] = { marked: true, dotColor: theme.primary };
       }
-    });
-    Object.entries(countMap).forEach(([date, count]) => {
-      let color = "#22c55e";
-      if (count > 2) color = "#eab308";
-      if (count > 5) color = "#ef4444";
-      marked[date] = { selected: true, selectedColor: color, selectedTextColor: "#fff" };
     });
     if (selectedDate) {
       const dateStr = selectedDate.toISOString().split("T")[0];
-      marked[dateStr] = { ...marked[dateStr], selected: true, selectedColor: theme.primary, selectedTextColor: "#fff" };
+      marked[dateStr] = { ...marked[dateStr], selected: true, selectedColor: theme.primary };
     }
     return marked;
   };
@@ -161,11 +151,7 @@ export default function BookingScreen() {
 
   const checkAndSetCustomTime = async (timeStr) => {
     if (!selectedDate || !selectedService) {
-      setAvailabilityModal({
-        visible: true,
-        available: false,
-        message: "Please select a date and service first."
-      });
+      setAvailabilityModal({ visible: true, available: false, message: "Please select a date and service first." });
       return;
     }
     const dateStr = selectedDate.toISOString().split("T")[0];
@@ -174,50 +160,29 @@ export default function BookingScreen() {
       if (res.data?.available) {
         setCustomTime(timeStr);
         setSelectedTime(null);
-        setAvailabilityModal({
-          visible: true,
-          available: true,
-          message: "This time is available. Click 'Book Appointment' to confirm."
-        });
+        setAvailabilityModal({ visible: true, available: true, message: "This time is available!" });
       } else {
-        setAvailabilityModal({
-          visible: true,
-          available: false,
-          message: "This time slot is already booked or outside shop hours. Please pick another time."
-        });
+        setAvailabilityModal({ visible: true, available: false, message: "Slot unavailable." });
       }
     } catch (err) {
-      setAvailabilityModal({
-        visible: true,
-        available: false,
-        message: "Could not check availability. Please try again."
-      });
-      console.error(err);
+      setAvailabilityModal({ visible: true, available: false, message: "Error checking availability." });
     }
   };
 
   const handleBook = async () => {
     const finalTime = customTime || selectedTime;
-    if (!selectedService || !selectedVehicle || !selectedDate || !finalTime) {
-      setAvailabilityModal({
-        visible: true,
-        available: false,
-        message: "Please select service, vehicle, date, and time."
-      });
-      return;
-    }
+    if (!selectedService || !selectedVehicle || !selectedDate || !finalTime) return;
     setSubmitting(true);
     try {
       const dateStr = selectedDate.toISOString().split("T")[0];
-      const payload = {
+      await appointmentsApi.create({
         customerId,
         vehicleId: selectedVehicle.id,
         serviceTypeId: selectedService.id,
         appointmentDate: dateStr,
         appointmentTime: finalTime,
         notes: "",
-      };
-      await appointmentsApi.create(payload);
+      });
       notify.success("Appointment booked!");
       setSelectedService(null);
       setSelectedVehicle(null);
@@ -226,8 +191,7 @@ export default function BookingScreen() {
       setCustomTime(null);
       await loadAppointments();
     } catch (err) {
-      const msg = err.response?.data?.message || "Booking failed";
-      setAvailabilityModal({ visible: true, available: false, message: msg });
+      setAvailabilityModal({ visible: true, available: false, message: err.response?.data?.message || "Booking failed" });
     }
     setSubmitting(false);
   };
@@ -235,18 +199,13 @@ export default function BookingScreen() {
   const handleCancelAppointment = (aptId) => {
     Alert.alert("Cancel Appointment", "Are you sure?", [
       { text: "No" },
-      {
-        text: "Yes",
-        onPress: async () => {
+      { text: "Yes", style: 'destructive', onPress: async () => {
           try {
             await appointmentsApi.cancel(aptId);
-            notify.success("Appointment cancelled");
+            notify.success("Cancelled");
             loadAppointments();
-          } catch (err) {
-            notify.error("Could not cancel");
-          }
-        },
-      },
+          } catch (err) { notify.error("Failed to cancel"); }
+        }},
     ]);
   };
 
@@ -259,176 +218,305 @@ export default function BookingScreen() {
   }
 
   return (
-    <ScrollView className="flex-1" style={{ backgroundColor: theme.background }}>
-      <View className="px-5 pt-4">
-        {/* My Appointments list */}
-        {appointments.length > 0 && (
-          <View className="mb-6">
-            <Text className="text-xl font-semibold mb-3" style={{ color: theme.text }}>My Appointments</Text>
-            {appointments.map((apt) => (
-              <View key={apt.id} className="p-3 mb-2 rounded-xl border" style={{ borderColor: theme.border, backgroundColor: theme.surface }}>
-                <Text className="font-semibold" style={{ color: theme.text }}>{apt.serviceTypeId}</Text>
-                <Text style={{ color: theme.textSecondary }}>{apt.appointmentDate} at {formatTime12h(apt.appointmentTime)}</Text>
-                <View className="flex-row justify-between mt-1">
-                  <Text style={{ color: theme.primary }}>{apt.status}</Text>
-                  {apt.status !== "CANCELLED" && apt.status !== "COMPLETED" && (
-                    <TouchableOpacity onPress={() => handleCancelAppointment(apt.id)}>
-                      <Text style={{ color: theme.error }}>Cancel</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        <Text className="text-2xl font-bold mb-4" style={{ color: theme.primary }}>Book New Appointment</Text>
-
-        {/* Service selection */}
-        <Text className="text-xl font-semibold mb-3" style={{ color: theme.text }}>Select Service</Text>
-        {services.map((service) => (
-          <TouchableOpacity key={service.id} className="p-4 mb-2 rounded-xl flex-row justify-between items-center" style={{
-              backgroundColor: selectedService?.id === service.id ? theme.primary + "20" : theme.surface,
-              borderWidth: selectedService?.id === service.id ? 2 : 0,
-              borderColor: theme.primary,
-            }} onPress={() => setSelectedService(service)}>
-            <View>
-              <Text className="text-lg font-semibold" style={{ color: theme.text }}>{service.name}</Text>
-              <Text style={{ color: theme.textSecondary }}>{service.durationMinutes} min</Text>
-            </View>
-            <Text className="text-lg font-bold" style={{ color: theme.primary }}>₱{service.basePrice}</Text>
-          </TouchableOpacity>
-        ))}
-
-        {/* Vehicle selection */}
-        <Text className="text-xl font-semibold mt-6 mb-3" style={{ color: theme.text }}>Select Vehicle</Text>
-        {vehicles.length === 0 ? (
-          <Text style={{ color: theme.textSecondary }}>No vehicles added. Please add one from Profile.</Text>
-        ) : (
-          vehicles.map((vehicle) => (
-            <TouchableOpacity key={vehicle.id} className="p-4 mb-2 rounded-xl flex-row justify-between items-center" style={{
-                backgroundColor: selectedVehicle?.id === vehicle.id ? theme.primary + "20" : theme.surface,
-                borderWidth: selectedVehicle?.id === vehicle.id ? 2 : 0,
-                borderColor: theme.primary,
-              }} onPress={() => setSelectedVehicle(vehicle)}>
-              <View>
-                <Text className="text-lg font-semibold" style={{ color: theme.text }}>{vehicle.make} {vehicle.model}</Text>
-                <Text style={{ color: theme.textSecondary }}>{vehicle.plateNumber}</Text>
-              </View>
-              <Ionicons name={selectedVehicle?.id === vehicle.id ? "checkmark-circle" : "ellipse-outline"} size={24} color={selectedVehicle?.id === vehicle.id ? theme.primary : theme.textSecondary} />
-            </TouchableOpacity>
-          ))
-        )}
-
-        {/* Date picker trigger */}
-        <Text className="text-xl font-semibold mt-6 mb-3" style={{ color: theme.text }}>Select Date</Text>
-        <TouchableOpacity className="p-4 rounded-xl flex-row justify-between items-center" style={{ backgroundColor: theme.surface }} onPress={() => setDatePickerVisible(true)}>
-          <Text style={{ color: selectedDate ? theme.text : theme.textSecondary }}>
-            {selectedDate ? selectedDate.toDateString() : "Tap to choose date"}
+    <ScrollView 
+      className="flex-1" 
+      style={{ backgroundColor: theme.background }}
+      showsVerticalScrollIndicator={false}
+    >
+      <View className="px-6 pt-12 pb-10">
+        
+        {/* --- Section: Header --- */}
+        <View className="mb-8">
+          <Text className="text-sm font-bold uppercase tracking-[2px] opacity-50" style={{ color: theme.text }}>
+            Service Center
           </Text>
-          <Text style={{ color: theme.primary }}>Select</Text>
-        </TouchableOpacity>
+          <Text className="text-3xl font-black" style={{ color: theme.text }}>
+            Book <Text style={{ color: theme.primary }}>Appointment</Text>
+          </Text>
+        </View>
 
-        <NativeModal animationType="slide" transparent visible={isDatePickerVisible} onRequestClose={() => setDatePickerVisible(false)}>
-          <View className="flex-1 justify-end bg-black/50">
-            <View className="rounded-t-3xl p-5" style={{ backgroundColor: theme.surface, minHeight: 480 }}>
-              <View className="flex-row justify-between items-center mb-4">
-                <Text className="text-xl font-semibold" style={{ color: theme.text }}>Choose a Date</Text>
-                <TouchableOpacity onPress={() => setDatePickerVisible(false)}><Ionicons name="close" size={24} color={theme.text} /></TouchableOpacity>
-              </View>
-              <Calendar onDayPress={handleDateSelect} markedDates={getMarkedDates()} minDate={new Date().toISOString().split("T")[0]} theme={{
-                  calendarBackground: theme.surface, textSectionTitleColor: theme.textSecondary,
-                  selectedDayBackgroundColor: theme.primary, selectedDayTextColor: "#fff",
-                  todayTextColor: theme.primary, dayTextColor: theme.text,
-                  textDisabledColor: theme.textSecondary, monthTextColor: theme.text,
-                  arrowColor: theme.primary,
-                }} style={{ borderRadius: 12, marginBottom: 10 }} />
-            </View>
+        {/* --- Section: Active Bookings (Horizontal Scroll) --- */}
+        {appointments.filter(a => a.status !== 'CANCELLED' && a.status !== 'COMPLETED').length > 0 && (
+          <View className="mb-10">
+            <Text className="text-xs font-black uppercase tracking-widest mb-4 opacity-40" style={{ color: theme.text }}>
+              Your Active Schedule
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+              {appointments.filter(a => a.status !== 'CANCELLED' && a.status !== 'COMPLETED').map((apt) => (
+                <View 
+                  key={apt.id} 
+                  className="p-5 mr-4 rounded-[32px] border w-[260px]" 
+                  style={{ backgroundColor: theme.surface, borderColor: theme.border }}
+                >
+                  <View className="flex-row justify-between items-start mb-3">
+                    <View className="w-10 h-10 rounded-2xl items-center justify-center" style={{ backgroundColor: theme.primary + '15' }}>
+                      <MaterialCommunityIcons name="calendar-check" size={20} color={theme.primary} />
+                    </View>
+                    <TouchableOpacity onPress={() => handleCancelAppointment(apt.id)}>
+                      <Ionicons name="close-circle-outline" size={22} color={theme.error} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text className="font-black text-base" style={{ color: theme.text }}>Service #{apt.id.toString().slice(-4)}</Text>
+                  <Text className="text-xs font-bold opacity-50 mb-4" style={{ color: theme.text }}>
+                    {apt.appointmentDate} • {formatTime12h(apt.appointmentTime)}
+                  </Text>
+                  <View className="px-3 py-1.5 rounded-full self-start" style={{ backgroundColor: theme.primary }}>
+                    <Text className="text-[10px] font-black uppercase text-white">{apt.status}</Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
           </View>
-        </NativeModal>
+        )}
 
-        {/* Time slots */}
-        <Text className="text-xl font-semibold mt-6 mb-3" style={{ color: theme.text }}>Select Time</Text>
-        {!selectedDate || !selectedService ? (
-          <Text style={{ color: theme.textSecondary }}>Please pick a date and service first</Text>
-        ) : availableSlots.length === 0 ? (
-          <Text style={{ color: theme.error }}>No available slots for this date</Text>
-        ) : (
-          <View className="flex-row flex-wrap">
-            {availableSlots.map((slot) => (
-              <TouchableOpacity
-                key={slot.time}
-                className={`w-1/4 p-2 mb-2 rounded-lg items-center ${!slot.available ? "opacity-50" : ""}`}
-                style={{ backgroundColor: (selectedTime === slot.time && !customTime) ? theme.primary : theme.surface }}
-                onPress={() => {
-                  if (slot.available) {
-                    setSelectedTime(slot.time);
-                    setCustomTime(null);
-                  }
-                }}
-                disabled={!slot.available}
+        {/* --- Step 1: Service Selection --- */}
+        <View className="mb-8">
+          <View className="flex-row items-center mb-4">
+            <View className="w-8 h-8 rounded-full items-center justify-center mr-3" style={{ backgroundColor: theme.primary }}>
+              <Text className="text-white font-black text-xs">1</Text>
+            </View>
+            <Text className="text-lg font-black" style={{ color: theme.text }}>Select Service</Text>
+          </View>
+          
+          <View className="space-y-3">
+            {services.map((service) => (
+              <TouchableOpacity 
+                key={service.id} 
+                activeOpacity={0.8}
+                className="p-5 rounded-[28px] border-2 flex-row justify-between items-center" 
+                style={{
+                  backgroundColor: selectedService?.id === service.id ? theme.primary + "10" : theme.surface,
+                  borderColor: selectedService?.id === service.id ? theme.primary : theme.border,
+                }} 
+                onPress={() => setSelectedService(service)}
               >
-                <Text style={{ color: (selectedTime === slot.time && !customTime) ? "#FFF" : theme.text }}>
-                  {formatTime12h(slot.time)}
-                </Text>
+                <View className="flex-1">
+                  <Text className="text-base font-black" style={{ color: theme.text }}>{service.name}</Text>
+                  <View className="flex-row items-center mt-1">
+                    <Ionicons name="time-outline" size={12} color={theme.textSecondary} />
+                    <Text className="text-xs ml-1 font-bold" style={{ color: theme.textSecondary }}>{service.durationMinutes} min</Text>
+                  </View>
+                </View>
+                <Text className="text-lg font-black" style={{ color: theme.primary }}>₱{service.basePrice}</Text>
               </TouchableOpacity>
             ))}
           </View>
-        )}
-
-        {/* Custom time picker */}
-        <View className="mt-4">
-          <TouchableOpacity
-            className="flex-row items-center justify-center p-3 rounded-xl border border-primary/30"
-            style={{ backgroundColor: theme.surface }}
-            onPress={() => setShowCustomTimePicker(true)}
-          >
-            <Ionicons name="time-outline" size={20} color={theme.primary} />
-            <Text className="ml-2 font-semibold" style={{ color: theme.primary }}>
-              {customTime ? `Custom: ${formatTime12h(customTime)}` : "Pick Custom Time"}
-            </Text>
-          </TouchableOpacity>
         </View>
 
-        {showCustomTimePicker && (
-          <DateTimePicker
-            value={new Date()}
-            mode="time"
-            is24Hour={false}
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={handleCustomTimeChange}
-          />
-        )}
+        {/* --- Step 2: Vehicle Selection --- */}
+        <View className="mb-8">
+          <View className="flex-row items-center mb-4">
+            <View className="w-8 h-8 rounded-full items-center justify-center mr-3" style={{ backgroundColor: theme.primary }}>
+              <Text className="text-white font-black text-xs">2</Text>
+            </View>
+            <Text className="text-lg font-black" style={{ color: theme.text }}>Select Vehicle</Text>
+          </View>
+          
+          {vehicles.length === 0 ? (
+            <View className="p-6 rounded-[28px] border border-dashed items-center" style={{ borderColor: theme.border }}>
+              <Text className="text-sm font-bold opacity-50" style={{ color: theme.text }}>No vehicles in your garage</Text>
+            </View>
+          ) : (
+            <View className="space-y-3">
+              {vehicles.map((vehicle) => (
+                <TouchableOpacity 
+                  key={vehicle.id} 
+                  activeOpacity={0.8}
+                  className="p-5 rounded-[28px] border-2 flex-row items-center" 
+                  style={{
+                    backgroundColor: selectedVehicle?.id === vehicle.id ? theme.primary + "10" : theme.surface,
+                    borderColor: selectedVehicle?.id === vehicle.id ? theme.primary : theme.border,
+                  }} 
+                  onPress={() => setSelectedVehicle(vehicle)}
+                >
+                  <View className="w-10 h-10 rounded-2xl items-center justify-center mr-4 shadow-sm" style={{ backgroundColor: theme.background }}>
+                    <MaterialCommunityIcons name="car-side" size={24} color={selectedVehicle?.id === vehicle.id ? theme.primary : theme.textSecondary} />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-base font-black" style={{ color: theme.text }}>{vehicle.make} {vehicle.model}</Text>
+                    <Text className="text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: theme.text }}>{vehicle.plateNumber}</Text>
+                  </View>
+                  <Ionicons 
+                    name={selectedVehicle?.id === vehicle.id ? "checkmark-circle" : "ellipse-outline"} 
+                    size={24} 
+                    color={selectedVehicle?.id === vehicle.id ? theme.primary : theme.border} 
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
 
+        {/* --- Step 3: Schedule --- */}
+        <View className="mb-8">
+          <View className="flex-row items-center mb-4">
+            <View className="w-8 h-8 rounded-full items-center justify-center mr-3" style={{ backgroundColor: theme.primary }}>
+              <Text className="text-white font-black text-xs">3</Text>
+            </View>
+            <Text className="text-lg font-black" style={{ color: theme.text }}>Choose Schedule</Text>
+          </View>
+
+          {/* Date Picker Button */}
+          <TouchableOpacity 
+            className="p-5 rounded-[28px] flex-row justify-between items-center mb-4 border" 
+            style={{ backgroundColor: theme.surface, borderColor: theme.border }} 
+            onPress={() => setDatePickerVisible(true)}
+          >
+            <View className="flex-row items-center">
+              <Ionicons name="calendar" size={20} color={theme.primary} />
+              <Text className="ml-3 font-bold" style={{ color: selectedDate ? theme.text : theme.textSecondary }}>
+                {selectedDate ? selectedDate.toDateString() : "Choose Date"}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+          </TouchableOpacity>
+
+          {/* Time Selection Logic */}
+          <View>
+            {!selectedDate || !selectedService ? (
+              <View className="p-8 items-center bg-gray-50 rounded-[28px] dark:bg-black/20">
+                 <Text className="text-xs font-black uppercase tracking-widest opacity-30 text-center">Complete steps 1 & 2 to view slots</Text>
+              </View>
+            ) : (
+              <>
+                <View className="flex-row flex-wrap justify-between">
+                  {availableSlots.length === 0 ? (
+                    <Text className="text-center w-full py-4 font-bold" style={{ color: theme.error }}>No slots available today</Text>
+                  ) : (
+                    availableSlots.map((slot) => (
+                      <TouchableOpacity
+                        key={slot.time}
+                        activeOpacity={0.7}
+                        className="w-[23%] py-4 mb-3 rounded-2xl items-center"
+                        style={{ 
+                          backgroundColor: (selectedTime === slot.time && !customTime) ? theme.primary : theme.surface,
+                          opacity: !slot.available ? 0.3 : 1,
+                          borderWidth: 1,
+                          borderColor: theme.border
+                        }}
+                        onPress={() => { if (slot.available) { setSelectedTime(slot.time); setCustomTime(null); } }}
+                        disabled={!slot.available}
+                      >
+                        <Text className="text-[10px] font-black" style={{ color: (selectedTime === slot.time && !customTime) ? "#FFF" : theme.text }}>
+                          {formatTime12h(slot.time)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </View>
+
+                {/* Custom Picker Trigger */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  className="flex-row items-center justify-center p-4 rounded-2xl border-2 border-dashed mt-2"
+                  style={{ backgroundColor: customTime ? theme.primary + '10' : 'transparent', borderColor: theme.primary + '40' }}
+                  onPress={() => setShowCustomTimePicker(true)}
+                >
+                  <Ionicons name="time" size={18} color={theme.primary} />
+                  <Text className="ml-2 font-black text-xs uppercase tracking-widest" style={{ color: theme.primary }}>
+                    {customTime ? `Custom: ${formatTime12h(customTime)}` : "Pick Custom Time"}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+
+        {/* --- Submission Button --- */}
         <TouchableOpacity
-          className="mt-6 py-4 rounded-xl bg-primary"
+          activeOpacity={0.9}
+          className="mt-6 py-5 rounded-[30px] shadow-xl shadow-primary/40"
+          style={{ 
+            backgroundColor: theme.primary, 
+            opacity: submitting || !selectedService || !selectedVehicle || !selectedDate || (!selectedTime && !customTime) ? 0.6 : 1 
+          }}
           onPress={handleBook}
           disabled={submitting || !selectedService || !selectedVehicle || !selectedDate || (!selectedTime && !customTime)}
         >
-          {submitting ? <ActivityIndicator color="white" /> : <Text className="text-white text-center font-semibold text-lg">Book Appointment</Text>}
+          {submitting ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text className="text-white text-center font-black uppercase tracking-[2px]">Confirm Booking</Text>
+          )}
         </TouchableOpacity>
       </View>
 
+      {/* --- Native Modal: Calendar --- */}
+      <NativeModal animationType="slide" transparent visible={isDatePickerVisible} onRequestClose={() => setDatePickerVisible(false)}>
+        <View className="flex-1 justify-end bg-black/60">
+          <View className="rounded-t-[40px] p-8 pb-12" style={{ backgroundColor: theme.surface }}>
+            <View className="w-12 h-1.5 rounded-full self-center mb-6 opacity-10" style={{ backgroundColor: theme.text }} />
+            <View className="flex-row justify-between items-center mb-6">
+              <Text className="text-xl font-black" style={{ color: theme.text }}>Select Date</Text>
+              <TouchableOpacity onPress={() => setDatePickerVisible(false)}>
+                <Ionicons name="close-circle" size={28} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <Calendar 
+              onDayPress={handleDateSelect} 
+              markedDates={getMarkedDates()} 
+              minDate={new Date().toISOString().split("T")[0]} 
+              theme={{
+                calendarBackground: 'transparent',
+                textSectionTitleColor: theme.textSecondary,
+                selectedDayBackgroundColor: theme.primary,
+                selectedDayTextColor: "#fff",
+                todayTextColor: theme.primary,
+                dayTextColor: theme.text,
+                textDisabledColor: theme.textSecondary + '40',
+                monthTextColor: theme.text,
+                arrowColor: theme.primary,
+                textDayFontWeight: '700',
+                textMonthFontWeight: '900',
+              }} 
+            />
+          </View>
+        </View>
+      </NativeModal>
+
+      {/* --- DateTimePicker Helper --- */}
+      {showCustomTimePicker && (
+        <DateTimePicker
+          value={new Date()}
+          mode="time"
+          is24Hour={false}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleCustomTimeChange}
+        />
+      )}
+
+      {/* --- Modal: Status Notifications --- */}
       <RNModal
         isVisible={availabilityModal.visible}
         onBackdropPress={() => setAvailabilityModal({ ...availabilityModal, visible: false })}
         backdropOpacity={0.6}
-        animationIn="fadeIn"
-        animationOut="fadeOut"
+        animationIn="zoomIn"
+        animationOut="zoomOut"
       >
-        <View className="bg-white rounded-2xl p-6" style={{ backgroundColor: theme.surface }}>
-          <Text className="text-xl font-bold mb-2" style={{ color: availabilityModal.available ? theme.success : theme.error }}>
-            {availabilityModal.available ? "Available" : "Not Available"}
+        <View className="rounded-[40px] p-8 items-center" style={{ backgroundColor: theme.surface }}>
+          <View 
+            className="w-16 h-16 rounded-full items-center justify-center mb-4" 
+            style={{ backgroundColor: (availabilityModal.available ? theme.success : theme.error) + '20' }}
+          >
+            <Ionicons 
+              name={availabilityModal.available ? "checkmark-done-circle" : "alert-circle"} 
+              size={40} 
+              color={availabilityModal.available ? theme.success : theme.error} 
+            />
+          </View>
+          <Text className="text-lg font-black mb-2" style={{ color: theme.text }}>
+            {availabilityModal.available ? "Spot Available!" : "Wait a moment"}
           </Text>
-          <Text className="text-base mb-6" style={{ color: theme.textSecondary }}>
+          <Text className="text-center font-medium opacity-60 mb-8" style={{ color: theme.textSecondary }}>
             {availabilityModal.message}
           </Text>
           <TouchableOpacity
-            className="py-3 rounded-lg"
+            activeOpacity={0.8}
+            className="w-full py-4 rounded-2xl"
             style={{ backgroundColor: theme.primary }}
             onPress={() => setAvailabilityModal({ ...availabilityModal, visible: false })}
           >
-            <Text className="text-white text-center font-semibold">OK</Text>
+            <Text className="text-white text-center font-black uppercase">Continue</Text>
           </TouchableOpacity>
         </View>
       </RNModal>

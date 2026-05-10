@@ -1,16 +1,10 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
-import { Link, useFocusEffect } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Platform } from "react-native";
+import { Link, useFocusEffect, useRouter } from "expo-router";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
-import { Image } from "react-native";
-import { useRouter } from "expo-router";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import appointmentsApi from "../../services/appointmentsApi";
-import { useEffect } from "react";
-import { registerForPushNotificationsAsync } from '../../services/notification';
-import pushNotificationApi from '../../services/pushNotificationApi';
-import { Platform } from "react-native";
 
 export default function HomeScreen() {
   const { theme, isDarkMode, toggleTheme } = useTheme();
@@ -19,22 +13,12 @@ export default function HomeScreen() {
   const [upcomingAppointment, setUpcomingAppointment] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // useEffect(() => {
-  //   const pushNotification = async () => {
-  //       const token = await registerForPushNotificationsAsync();
-  //       if (token) {
-  //           await pushNotificationApi.registerToken(token, Platform.OS);
-  //       }
-  //   }
-  //   pushNotification();
-  // }, []);
-
+  // --- Logic: Load Data ---
   const loadUpcomingAppointment = async () => {
     if (!user?.id) return;
     try {
       const res = await appointmentsApi.list({ customerId: user.id, _t: Date.now() });
       const allAppointments = res.data || [];
-
       const now = new Date();
       const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -66,9 +50,10 @@ export default function HomeScreen() {
     }, [user?.id])
   );
 
+  // --- Helpers: Formatting ---
   const formatTime = (timeStr) => {
     if (!timeStr) return '';
-    return timeStr.slice(0,5);
+    return timeStr.slice(0, 5);
   };
 
   const formatDate = (dateStr) => {
@@ -78,192 +63,250 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView className="flex-1" style={{ backgroundColor: theme.background }}>
-      {/* Custom Header */}
-      <View className="px-5 pt-12 pb-2 flex-row justify-between items-center">
+    <ScrollView 
+      className="flex-1" 
+      style={{ backgroundColor: theme.background }}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* --- Section: Header & Greeting --- */}
+      <View className="px-6 pt-14 pb-6 flex-row justify-between items-center">
         <View>
-          <Text className="text-2xl font-bold" style={{ color: theme.text }}>
-            Welcome back,
+          <Text className="text-sm font-bold uppercase tracking-widest opacity-60" style={{ color: theme.text }}>
+            Welcome back
           </Text>
-          <Text className="text-3xl font-bold" style={{ color: theme.primary }}>
+          <Text className="text-3xl font-black" style={{ color: theme.text }}>
             {user?.fullName?.split(' ')[0] || 'Customer'}
+            <Text style={{ color: theme.primary }}>.</Text>
           </Text>
         </View>
-        <TouchableOpacity onPress={toggleTheme} className="p-2">
-          <Ionicons name={isDarkMode ? "sunny-outline" : "moon-outline"} size={28} color={theme.text} />
+        <TouchableOpacity 
+          onPress={toggleTheme} 
+          className="w-12 h-12 rounded-2xl items-center justify-center border"
+          style={{ backgroundColor: theme.surface, borderColor: theme.border }}
+        >
+          <Ionicons name={isDarkMode ? "sunny" : "moon"} size={22} color={theme.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* Hero Promo Card */}
-      <View className="px-5 mt-2">
-        <View className="relative rounded-2xl overflow-hidden h-40">
+      {/* --- Section: Hero Promo Card --- */}
+      <View className="px-6">
+        <TouchableOpacity 
+          activeOpacity={0.9}
+          onPress={() => router.push('/booking')}
+          className="relative rounded-[32px] overflow-hidden h-48 shadow-xl shadow-black/20"
+        >
           <Image
             source={{ uri: 'https://images.pexels.com/photos/3806249/pexels-photo-3806249.jpeg?auto=compress&cs=tinysrgb&w=600' }}
             className="absolute w-full h-full"
             resizeMode="cover"
           />
-          <View className="absolute w-full h-full bg-black/40" />
-          <View className="flex-1 p-5 justify-center">
-            <Text className="text-white text-2xl font-bold mb-1">Need Car Service?</Text>
-            <Text className="text-white text-sm mb-4 opacity-90">Book your appointment now on AutoProTech!</Text>
-            <TouchableOpacity
-              className="bg-accent self-start px-6 py-2 rounded-full"
+          <View className="absolute w-full h-full bg-black/50" />
+          <View className="flex-1 p-7 justify-center">
+            <View className="bg-white/20 self-start px-3 py-1 rounded-lg mb-2">
+              <Text className="text-white text-[10px] font-bold uppercase tracking-tighter">Limited Offer</Text>
+            </View>
+            <Text className="text-white text-2xl font-black mb-1 leading-7">Full Diagnostic{"\n"}& Checkup</Text>
+            <Text className="text-white text-xs mb-4 opacity-80 font-medium">Keep your engine running smooth.</Text>
+            <View 
+              className="self-start px-6 py-2.5 rounded-xl flex-row items-center"
               style={{ backgroundColor: '#FFD700' }}
-              onPress={() => router.push('/booking')}
             >
-              <Text className="text-black font-bold">Book Now</Text>
-            </TouchableOpacity>
+              <Text className="text-black font-black text-sm mr-2">Book Now</Text>
+              <Ionicons name="arrow-forward" size={16} color="black" />
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </View>
 
-      {/* Quick Actions */}
-      <View className="px-5 mt-6">
-        <Text className="text-xl font-semibold mb-3" style={{ color: theme.text }}>Quick Actions</Text>
+      {/* --- Section: Quick Actions --- */}
+      <View className="px-6 mt-8">
+        <Text className="text-lg font-black mb-4 px-1" style={{ color: theme.text }}>Services</Text>
         <View className="flex-row justify-between">
-          <TouchableOpacity
-            className="flex-1 bg-surface mr-2 p-4 rounded-xl items-center"
-            style={{ backgroundColor: theme.surface }}
-            onPress={() => router.push('/booking')}
-          >
-            <View className="w-12 h-12 rounded-full items-center justify-center mb-2" style={{ backgroundColor: theme.primary + '20' }}>
-              <Ionicons name="calendar-outline" size={24} color={theme.primary} />
-            </View>
-            <Text className="text-sm font-semibold" style={{ color: theme.text }}>Booking</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className="flex-1 bg-surface mx-2 p-4 rounded-xl items-center"
-            style={{ backgroundColor: theme.surface }}
-            onPress={() => router.push('/tracking?appointmentId=dummy')}
-          >
-            <View className="w-12 h-12 rounded-full items-center justify-center mb-2" style={{ backgroundColor: theme.accent + '20' }}>
-              <Ionicons name="location-outline" size={24} color={theme.accent} />
-            </View>
-            <Text className="text-sm font-semibold" style={{ color: theme.text }}>Tracking</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className="flex-1 bg-surface ml-2 p-4 rounded-xl items-center"
-            style={{ backgroundColor: theme.surface }}
-            onPress={() => router.push('/invoice')}
-          >
-            <View className="w-12 h-12 rounded-full items-center justify-center mb-2" style={{ backgroundColor: theme.success + '20' }}>
-              <Ionicons name="card-outline" size={24} color={theme.success} />
-            </View>
-            <Text className="text-sm font-semibold" style={{ color: theme.text }}>Payment</Text>
-          </TouchableOpacity>
+          <ActionItem 
+            icon="calendar" 
+            label="Booking" 
+            color={theme.primary} 
+            theme={theme} 
+            onPress={() => router.push('/booking')} 
+          />
+          <ActionItem 
+            icon="location" 
+            label="Tracking" 
+            color="#6366f1" 
+            theme={theme} 
+            onPress={() => router.push('/tracking?appointmentId=dummy')} 
+          />
+          <ActionItem 
+            icon="receipt" 
+            label="Payment" 
+            color="#10b981" 
+            theme={theme} 
+            onPress={() => router.push('/invoice')} 
+          />
         </View>
       </View>
 
-      {/* Upcoming Appointment */}
-      <View className="px-5 mt-6">
-        <View className="flex-row justify-between items-center mb-3">
-          <Text className="text-xl font-semibold" style={{ color: theme.text }}>Upcoming Appointment</Text>
+      {/* --- Section: Upcoming Appointment --- */}
+      <View className="px-6 mt-8">
+        <View className="flex-row justify-between items-end mb-4 px-1">
+          <Text className="text-lg font-black" style={{ color: theme.text }}>Schedule</Text>
           <Link href="/appointments">
-            <Text className="text-base font-medium" style={{ color: theme.primary }}>View All</Text>
+            <Text className="text-xs font-bold uppercase tracking-wider" style={{ color: theme.primary }}>View All</Text>
           </Link>
         </View>
 
         {loading ? (
-          <View className="p-4 rounded-xl items-center" style={{ backgroundColor: theme.surface }}>
+          <View className="h-32 rounded-3xl items-center justify-center border border-dashed" style={{ backgroundColor: theme.surface, borderColor: theme.border }}>
             <ActivityIndicator color={theme.primary} />
           </View>
         ) : upcomingAppointment ? (
-          <View className="p-4 rounded-xl" style={{ backgroundColor: theme.surface }}>
-            <View className="flex-row justify-between items-start mb-2">
-              <View>
-                <Text className="text-lg font-bold" style={{ color: theme.text }}>
-                  {upcomingAppointment.serviceType?.name || 'Service'}
-                </Text>
-                <Text className="text-sm" style={{ color: theme.textSecondary }}>
-                  {upcomingAppointment.vehicle?.make} {upcomingAppointment.vehicle?.model} • {upcomingAppointment.vehicle?.plateNumber}
-                </Text>
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            onPress={() => router.push(`/tracking?appointmentId=${upcomingAppointment.id}`)}
+            className="p-5 rounded-[28px] border" 
+            style={{ backgroundColor: theme.surface, borderColor: theme.border }}
+          >
+            <View className="flex-row justify-between items-start mb-4">
+              <View className="flex-row items-center">
+                <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: theme.primary + '15' }}>
+                  <MaterialCommunityIcons name="car-cog" size={26} color={theme.primary} />
+                </View>
+                <View>
+                  <Text className="text-lg font-black" style={{ color: theme.text }}>
+                    {upcomingAppointment.serviceType?.name || 'Service'}
+                  </Text>
+                  <Text className="text-xs font-bold opacity-50" style={{ color: theme.text }}>
+                    {upcomingAppointment.vehicle?.make} {upcomingAppointment.vehicle?.model}
+                  </Text>
+                </View>
               </View>
-              <View className="px-3 py-1 rounded-full" style={{ backgroundColor: theme.success + '20' }}>
-                <Text className="text-xs font-semibold" style={{ color: theme.success }}>
-                  {upcomingAppointment.status}
-                </Text>
+              <View className="px-3 py-1 rounded-lg" style={{ backgroundColor: '#10b98120' }}>
+                <Text className="text-[10px] font-black" style={{ color: '#10b981' }}>{upcomingAppointment.status}</Text>
               </View>
             </View>
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
-              <Text className="text-sm ml-1 mr-4" style={{ color: theme.textSecondary }}>
-                {formatDate(upcomingAppointment.appointmentDate)}
-              </Text>
-              <Ionicons name="time-outline" size={16} color={theme.textSecondary} />
-              <Text className="text-sm ml-1" style={{ color: theme.textSecondary }}>
-                {formatTime(upcomingAppointment.appointmentTime)}
-              </Text>
+
+            <View className="flex-row items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
+              <View className="flex-row">
+                <View className="flex-row items-center mr-4">
+                  <Ionicons name="calendar-clear" size={14} color={theme.primary} />
+                  <Text className="text-[13px] ml-1.5 font-bold" style={{ color: theme.textSecondary }}>
+                    {formatDate(upcomingAppointment.appointmentDate)}
+                  </Text>
+                </View>
+                <View className="flex-row items-center">
+                  <Ionicons name="time" size={14} color={theme.primary} />
+                  <Text className="text-[13px] ml-1.5 font-bold" style={{ color: theme.textSecondary }}>
+                    {formatTime(upcomingAppointment.appointmentTime)}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
             </View>
-            <TouchableOpacity
-              className="bg-primary py-2 rounded-full mt-2"
-              style={{ backgroundColor: theme.primary }}
-              onPress={() => router.push(`/tracking?appointmentId=${upcomingAppointment.id}`)}
-            >
-              <Text className="text-white text-center font-semibold">Track Appointment</Text>
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         ) : (
-          <View className="p-4 rounded-xl items-center" style={{ backgroundColor: theme.surface }}>
-            <Ionicons name="calendar-outline" size={48} color={theme.textSecondary} />
-            <Text className="mt-2 text-center" style={{ color: theme.textSecondary }}>
-              No upcoming appointments.{"\n"}Book one now!
+          <View className="p-8 rounded-[28px] items-center border border-dashed" style={{ backgroundColor: theme.surface, borderColor: theme.border }}>
+            <View className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-900 items-center justify-center mb-4">
+              <Ionicons name="calendar-outline" size={32} color={theme.textSecondary} />
+            </View>
+            <Text className="text-center font-bold mb-4" style={{ color: theme.textSecondary }}>
+              No active bookings.
             </Text>
             <TouchableOpacity
-              className="mt-3 bg-primary px-6 py-2 rounded-full"
+              className="px-8 py-3 rounded-2xl"
               style={{ backgroundColor: theme.primary }}
               onPress={() => router.push('/booking')}
             >
-              <Text className="text-white font-semibold">Book Now</Text>
+              <Text className="text-white font-black text-xs uppercase tracking-widest">Book Now</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
 
-      {/* My Vehicles */}
-      <View className="px-5 mt-6">
-        <View className="flex-row justify-between items-center mb-3">
-          <Text className="text-xl font-semibold" style={{ color: theme.text }}>My Vehicles</Text>
+      {/* --- Section: My Vehicles --- */}
+      <View className="mt-8">
+        <View className="flex-row justify-between items-center mb-4 px-7">
+          <Text className="text-lg font-black" style={{ color: theme.text }}>Garage</Text>
           <Link href="/vehicles">
-            <Text className="text-base font-medium" style={{ color: theme.primary }}>Manage</Text>
+            <Text className="text-xs font-bold uppercase tracking-wider" style={{ color: theme.primary }}>Manage</Text>
           </Link>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 24, paddingRight: 8 }}>
           <VehicleCard name="Toyota Vios" plate="ABC 1234" year="2021" theme={theme} />
           <VehicleCard name="Honda Civic" plate="XYZ 5678" year="2022" theme={theme} />
+          <TouchableOpacity 
+            className="mr-4 p-5 rounded-3xl w-40 h-32 items-center justify-center border border-dashed" 
+            style={{ borderColor: theme.border }}
+          >
+            <Ionicons name="add-circle" size={32} color={theme.primary} />
+            <Text className="text-[10px] font-bold mt-2 uppercase tracking-tighter" style={{ color: theme.textSecondary }}>Add Vehicle</Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
 
-      {/* Popular Services */}
-      <View className="px-5 mt-6 mb-6">
-        <Text className="text-xl font-semibold mb-3" style={{ color: theme.text }}>Popular Services</Text>
-        <ServiceCard name="PMS" duration="2 hours" price="₱3,500" theme={theme} />
-        <ServiceCard name="Oil Change" duration="45 mins" price="₱1,500" theme={theme} />
-        <ServiceCard name="Tire Rotation" duration="30 mins" price="₱800" theme={theme} />
+      {/* --- Section: Popular Services --- */}
+      <View className="px-6 mt-8 mb-12">
+        <Text className="text-lg font-black mb-4 px-1" style={{ color: theme.text }}>Trending Services</Text>
+        <ServiceCard name="PMS Check" duration="2 hours" price="₱3,500" icon="speedometer" theme={theme} />
+        <ServiceCard name="Synthetic Oil Change" duration="45 mins" price="₱1,500" icon="water" theme={theme} />
+        <ServiceCard name="Wheel Balancing" duration="30 mins" price="₱800" icon="disc" theme={theme} />
       </View>
     </ScrollView>
   );
 }
 
-const VehicleCard = ({ name, plate, year, theme }) => (
-  <TouchableOpacity className="mr-3 p-4 rounded-xl w-40" style={{ backgroundColor: theme.surface }}>
-    <Text className="text-lg font-bold mb-1" style={{ color: theme.text }}>{name}</Text>
-    <Text className="text-sm mb-2" style={{ color: theme.textSecondary }}>{plate} • {year}</Text>
-    <View className="flex-row justify-end"><Ionicons name="chevron-forward" size={20} color={theme.textSecondary} /></View>
+// --- Sub-Component: Quick Action Button ---
+const ActionItem = ({ icon, label, color, theme, onPress }) => (
+  <TouchableOpacity
+    activeOpacity={0.7}
+    onPress={onPress}
+    className="items-center w-[30%]"
+  >
+    <View 
+      className="w-16 h-16 rounded-3xl items-center justify-center mb-2 shadow-sm"
+      style={{ backgroundColor: theme.surface, borderBottomWidth: 3, borderBottomColor: color + '40' }}
+    >
+      <Ionicons name={icon} size={24} color={color} />
+    </View>
+    <Text className="text-[11px] font-black uppercase tracking-tighter" style={{ color: theme.text }}>{label}</Text>
   </TouchableOpacity>
 );
 
-const ServiceCard = ({ name, duration, price, theme }) => (
-  <TouchableOpacity className="flex-row justify-between items-center p-4 mb-3 rounded-xl" style={{ backgroundColor: theme.surface }}>
-    <View className="flex-1">
-      <Text className="text-lg font-bold mb-1" style={{ color: theme.text }}>{name}</Text>
-      <Text className="text-sm" style={{ color: theme.textSecondary }}>{duration}</Text>
+// --- Sub-Component: Vehicle Card ---
+const VehicleCard = ({ name, plate, year, theme }) => (
+  <TouchableOpacity 
+    activeOpacity={0.8}
+    className="mr-4 p-5 rounded-[28px] w-44 h-32 justify-between border" 
+    style={{ backgroundColor: theme.surface, borderColor: theme.border }}
+  >
+    <View className="w-10 h-10 rounded-xl items-center justify-center" style={{ backgroundColor: theme.primary + '10' }}>
+      <Ionicons name="car" size={20} color={theme.primary} />
     </View>
-    <View className="flex-row items-center">
-      <View className="items-end mr-3">
-        <Text className="text-lg font-bold" style={{ color: theme.primary }}>{price}</Text>
-        <Text className="text-sm" style={{ color: theme.textSecondary }}>Starting</Text>
+    <View>
+      <Text className="text-sm font-black" numberOfLines={1} style={{ color: theme.text }}>{name}</Text>
+      <Text className="text-[10px] font-bold opacity-50 uppercase tracking-widest" style={{ color: theme.text }}>{plate}</Text>
+    </View>
+  </TouchableOpacity>
+);
+
+// --- Sub-Component: Service Card ---
+const ServiceCard = ({ name, duration, price, icon, theme }) => (
+  <TouchableOpacity 
+    activeOpacity={0.8}
+    className="flex-row justify-between items-center p-5 mb-4 rounded-3xl border" 
+    style={{ backgroundColor: theme.surface, borderColor: theme.border }}
+  >
+    <View className="flex-row items-center flex-1">
+      <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: theme.background }}>
+        <Ionicons name={icon} size={22} color={theme.primary} />
       </View>
-      <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+      <View className="flex-1">
+        <Text className="text-base font-black" style={{ color: theme.text }}>{name}</Text>
+        <Text className="text-xs font-bold opacity-50" style={{ color: theme.text }}>{duration}</Text>
+      </View>
+    </View>
+    <View className="items-end">
+      <Text className="text-base font-black" style={{ color: theme.primary }}>{price}</Text>
+      <Text className="text-[10px] font-bold uppercase tracking-tighter opacity-40" style={{ color: theme.text }}>From</Text>
     </View>
   </TouchableOpacity>
 );
