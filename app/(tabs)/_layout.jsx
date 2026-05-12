@@ -2,26 +2,32 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { View, TouchableOpacity, Dimensions, Platform } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
+import Animated, { 
+  useAnimatedStyle, 
+  withSpring, 
+  withTiming, 
+} from "react-native-reanimated";
 
 const { width } = Dimensions.get("window");
 
 /**
  * --- Custom Tab Bar Component ---
- * Rebuilds the UI to support transparency, floating effects, and custom animations.
- * [Logic Unchanged, UI Completely Redesigned]
+ * Rebuilt with "Liquid Glass" aesthetics: transparency, glass borders, and glow effects.
  */
 function CustomTabBar({ state, descriptors, navigation, theme }) {
   return (
     <View 
-      className="absolute bottom-6 self-center flex-row items-center justify-around rounded-[32px] px-2 shadow-2xl"
+      className="absolute bottom-8 self-center flex-row items-center justify-around rounded-[32px] px-3"
       style={{ 
-        backgroundColor: theme.surface + 'E6', // Semi-transparent glass effect
-        width: width * 0.92,
-        height: 70,
-        borderWidth: 1,
-        borderColor: theme.border,
+        // --- Liquid Glass Container ---
+        backgroundColor: theme.surface + 'B3', // Transparent glass (70% opacity)
+        width: width * 0.90,
+        height: 64,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.2)', // Light glass border for shine
+        overflow: 'hidden',
         ...Platform.select({
-          ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20 },
+          ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 15 },
           android: { elevation: 10 }
         })
       }}
@@ -37,7 +43,7 @@ function CustomTabBar({ state, descriptors, navigation, theme }) {
           }
         };
 
-        // --- Icon Logic ---
+        // --- Logic: Icon Mapping ---
         const getIcon = (routeName, focused) => {
           const icons = {
             index: focused ? "grid" : "grid-outline",
@@ -52,36 +58,53 @@ function CustomTabBar({ state, descriptors, navigation, theme }) {
           return icons[routeName] || "help-circle-outline";
         };
 
+        // --- UI Pieces: Liquid Highlight Style ---
+        const animatedPillStyle = useAnimatedStyle(() => {
+          return {
+            // Liquid glow effect using primary color with low opacity
+            backgroundColor: withTiming(isFocused ? theme.primary + '25' : 'transparent', { duration: 200 }),
+            transform: [
+              { scale: withSpring(isFocused ? 1.1 : 0.8, { damping: 15, stiffness: 150 }) }
+            ],
+            opacity: withTiming(isFocused ? 1 : 0, { duration: 150 })
+          };
+        });
+
+        // --- UI Pieces: Active Icon Animation ---
+        const animatedIconStyle = useAnimatedStyle(() => {
+          return {
+            transform: [
+                { scale: withSpring(isFocused ? 1.15 : 1, { damping: 12 }) },
+                { translateY: withTiming(isFocused ? -2 : 0, { duration: 200 }) }
+            ]
+          };
+        });
+
         return (
           <TouchableOpacity
             key={route.key}
             onPress={onPress}
-            activeOpacity={0.7}
-            className="items-center justify-center"
+            activeOpacity={0.6}
+            className="items-center justify-center flex-1 h-full"
           >
-            {/* --- Active Indicator (Pill Animation Effect) --- */}
-            <View 
-              className="items-center justify-center rounded-2xl"
-              style={{
-                width: 48,
-                height: 48,
-                backgroundColor: isFocused ? theme.primary : 'transparent',
-                // Subtle scale effect when active
-                transform: [{ scale: isFocused ? 1.1 : 1 }]
-              }}
-            >
-              <Ionicons 
-                name={getIcon(route.name, isFocused)} 
-                size={22} 
-                color={isFocused ? "#FFFFFF" : theme.textSecondary} 
+            <View className="items-center justify-center w-full h-full">
+              {/* --- Liquid Glow Layer --- */}
+              <Animated.View 
+                className="absolute w-14 h-10 rounded-2xl"
+                style={[
+                    animatedPillStyle,
+                    { shadowColor: theme.primary, shadowOpacity: 0.3, shadowRadius: 10 }
+                ]}
               />
-              
-              {/* --- Dot Indicator for Inactive --- */}
-              {isFocused && (
-                <View 
-                  className="absolute -bottom-1 w-1 h-1 rounded-full bg-white" 
+
+              {/* --- Icon Layer (Fixed to Primary Red) --- */}
+              <Animated.View style={animatedIconStyle}>
+                <Ionicons 
+                  name={getIcon(route.name, isFocused)} 
+                  size={24} 
+                  color={isFocused ? theme.primary : theme.textSecondary} 
                 />
-              )}
+              </Animated.View>
             </View>
           </TouchableOpacity>
         );
@@ -95,16 +118,21 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      // --- Custom Tab Bar Integration ---
+      // --- Integration: Custom Glass UI ---
       tabBar={(props) => <CustomTabBar {...props} theme={theme} />}
       screenOptions={{
         headerShown: false,
-        // Ensure content doesn't overlap with the floating navbar
         tabBarShowLabel: false,
-        tabBarStyle: { position: 'absolute', backgroundColor: 'transparent', borderTopWidth: 0 },
+        tabBarStyle: { 
+            position: 'absolute', 
+            backgroundColor: 'transparent', 
+            borderTopWidth: 0,
+            elevation: 0,
+        },
+        // Fast, normal cross-fade
+        animation: 'fade',
       }}
     >
-      {/* --- Main Navigation Hubs --- */}
       <Tabs.Screen
         name="index"
         options={{ title: "Home" }}
@@ -113,30 +141,10 @@ export default function TabLayout() {
         name="vehicles"
         options={{ title: "Vehicles" }}
       />
-      
-      {/* --- Service & Diagnostic Tools --- */}
       <Tabs.Screen
         name="services"
         options={{ title: "Services" }}
       />
-      <Tabs.Screen
-        name="booking"
-        options={{ title: "Booking" }}
-      />
-      <Tabs.Screen
-        name="estimate"
-        options={{ title: "Estimate" }}
-      />
-      <Tabs.Screen
-        name="tracking"
-        options={{ title: "Tracking" }}
-      />
-      <Tabs.Screen
-        name="invoice"
-        options={{ title: "Invoice" }}
-      />
-      
-      {/* --- Identity --- */}
       <Tabs.Screen
         name="profile"
         options={{ title: "Profile" }}

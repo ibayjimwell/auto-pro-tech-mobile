@@ -3,9 +3,9 @@ import { useState, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 // Using Expo Vector Icons for consistent Material UI feel
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useTheme } from "../../context/ThemeContext";
-import { useAuth } from "../../context/AuthContext";
-import appointmentsApi from "../../services/appointmentsApi";
+import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
+import appointmentsApi from "../services/appointmentsApi";
 import { useRouter } from "expo-router";
 
 export default function AllAppointmentsScreen() {

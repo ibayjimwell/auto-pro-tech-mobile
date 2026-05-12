@@ -4,17 +4,16 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Calendar } from "react-native-calendars";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import RNModal from "react-native-modal";
-import { useTheme } from "../../context/ThemeContext";
-import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 import { useFocusEffect } from "@react-navigation/native";
 import io from "socket.io-client";
-import { API_BASE_URL } from "../../services/api";
-import appointmentsApi from "../../services/appointmentsApi";
-import serviceTypesApi from "../../services/serviceTypesApi";
-import vehiclesApi from "../../services/vehiclesApi";
-import { notify } from "../../lib/notify";
+import { API_BASE_URL } from "../services/api";
+import appointmentsApi from "../services/appointmentsApi";
+import serviceTypesApi from "../services/serviceTypesApi";
+import vehiclesApi from "../services/vehiclesApi";
+import { notify } from "../lib/notify";
 
-// --- Helpers: Time Formatting ---
 const formatTime12h = (time24) => {
   if (!time24) return "";
   const [hour, minute] = time24.split(":");
@@ -33,7 +32,6 @@ export default function BookingScreen() {
   const { user } = useAuth();
   const customerId = user?.id;
 
-  // --- State Management ---
   const [loading, setLoading] = useState(true);
   const [services, setServices] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -51,7 +49,7 @@ export default function BookingScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [availabilityModal, setAvailabilityModal] = useState({ visible: false, available: false, message: "" });
 
-  // --- Data Fetching Logic ---
+  // --- Data Fetching with cache busting ---
   const loadServices = async () => {
     try {
       const res = await serviceTypesApi.listActive();
@@ -85,6 +83,7 @@ export default function BookingScreen() {
     }
     try {
       const dateStr = selectedDate.toISOString().split("T")[0];
+      // Add timestamp to prevent caching
       const res = await appointmentsApi.getAvailableSlots(dateStr, selectedService.id);
       setAvailableSlots(res.data || []);
     } catch (err) {
@@ -99,11 +98,15 @@ export default function BookingScreen() {
     loadAppointments();
   }, [customerId]));
 
+  // Reload slots when date or service changes AND reset times
   useEffect(() => {
     loadAvailableSlots();
+    // Clear any previously selected times to avoid confusion
+    setSelectedTime(null);
+    setCustomTime(null);
   }, [selectedDate, selectedService]);
 
-  // --- WebSocket Integration ---
+  // --- WebSocket ---
   useEffect(() => {
     const socketUrl = API_BASE_URL.replace("/api/v1", "");
     const newSocket = io(socketUrl, { transports: ["websocket"] });
@@ -112,12 +115,13 @@ export default function BookingScreen() {
       loadAppointments();
       if (data.type === "created" && data.appointment.customerId === customerId) {
         notify.success("New appointment booked!");
+        // Refresh available slots for the current date
+        loadAvailableSlots();
       }
     });
     return () => newSocket.disconnect();
   }, [customerId]);
 
-  // --- Interaction Handlers ---
   const getMarkedDates = () => {
     const marked = {};
     appointments.forEach((apt) => {
@@ -225,7 +229,7 @@ export default function BookingScreen() {
     >
       <View className="px-6 pt-12 pb-10">
         
-        {/* --- Section: Header --- */}
+        {/* Header */}
         <View className="mb-8">
           <Text className="text-sm font-bold uppercase tracking-[2px] opacity-50" style={{ color: theme.text }}>
             Service Center
@@ -235,7 +239,7 @@ export default function BookingScreen() {
           </Text>
         </View>
 
-        {/* --- Section: Active Bookings (Horizontal Scroll) --- */}
+        {/* Active Bookings */}
         {appointments.filter(a => a.status !== 'CANCELLED' && a.status !== 'COMPLETED').length > 0 && (
           <View className="mb-10">
             <Text className="text-xs font-black uppercase tracking-widest mb-4 opacity-40" style={{ color: theme.text }}>
@@ -269,7 +273,7 @@ export default function BookingScreen() {
           </View>
         )}
 
-        {/* --- Step 1: Service Selection --- */}
+        {/* Service Selection */}
         <View className="mb-8">
           <View className="flex-row items-center mb-4">
             <View className="w-8 h-8 rounded-full items-center justify-center mr-3" style={{ backgroundColor: theme.primary }}>
@@ -277,7 +281,6 @@ export default function BookingScreen() {
             </View>
             <Text className="text-lg font-black" style={{ color: theme.text }}>Select Service</Text>
           </View>
-          
           <View className="space-y-3">
             {services.map((service) => (
               <TouchableOpacity 
@@ -303,7 +306,7 @@ export default function BookingScreen() {
           </View>
         </View>
 
-        {/* --- Step 2: Vehicle Selection --- */}
+        {/* Vehicle Selection */}
         <View className="mb-8">
           <View className="flex-row items-center mb-4">
             <View className="w-8 h-8 rounded-full items-center justify-center mr-3" style={{ backgroundColor: theme.primary }}>
@@ -311,7 +314,6 @@ export default function BookingScreen() {
             </View>
             <Text className="text-lg font-black" style={{ color: theme.text }}>Select Vehicle</Text>
           </View>
-          
           {vehicles.length === 0 ? (
             <View className="p-6 rounded-[28px] border border-dashed items-center" style={{ borderColor: theme.border }}>
               <Text className="text-sm font-bold opacity-50" style={{ color: theme.text }}>No vehicles in your garage</Text>
@@ -347,7 +349,7 @@ export default function BookingScreen() {
           )}
         </View>
 
-        {/* --- Step 3: Schedule --- */}
+        {/* Schedule */}
         <View className="mb-8">
           <View className="flex-row items-center mb-4">
             <View className="w-8 h-8 rounded-full items-center justify-center mr-3" style={{ backgroundColor: theme.primary }}>
@@ -356,7 +358,6 @@ export default function BookingScreen() {
             <Text className="text-lg font-black" style={{ color: theme.text }}>Choose Schedule</Text>
           </View>
 
-          {/* Date Picker Button */}
           <TouchableOpacity 
             className="p-5 rounded-[28px] flex-row justify-between items-center mb-4 border" 
             style={{ backgroundColor: theme.surface, borderColor: theme.border }} 
@@ -371,11 +372,10 @@ export default function BookingScreen() {
             <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
           </TouchableOpacity>
 
-          {/* Time Selection Logic */}
           <View>
             {!selectedDate || !selectedService ? (
               <View className="p-8 items-center bg-gray-50 rounded-[28px] dark:bg-black/20">
-                 <Text className="text-xs font-black uppercase tracking-widest opacity-30 text-center">Complete steps 1 & 2 to view slots</Text>
+                <Text className="text-xs font-black uppercase tracking-widest opacity-30 text-center">Complete steps 1 & 2 to view slots</Text>
               </View>
             ) : (
               <>
@@ -405,7 +405,6 @@ export default function BookingScreen() {
                   )}
                 </View>
 
-                {/* Custom Picker Trigger */}
                 <TouchableOpacity
                   activeOpacity={0.8}
                   className="flex-row items-center justify-center p-4 rounded-2xl border-2 border-dashed mt-2"
@@ -422,7 +421,6 @@ export default function BookingScreen() {
           </View>
         </View>
 
-        {/* --- Submission Button --- */}
         <TouchableOpacity
           activeOpacity={0.9}
           className="mt-6 py-5 rounded-[30px] shadow-xl shadow-primary/40"
@@ -441,7 +439,7 @@ export default function BookingScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* --- Native Modal: Calendar --- */}
+      {/* Calendar Modal */}
       <NativeModal animationType="slide" transparent visible={isDatePickerVisible} onRequestClose={() => setDatePickerVisible(false)}>
         <View className="flex-1 justify-end bg-black/60">
           <View className="rounded-t-[40px] p-8 pb-12" style={{ backgroundColor: theme.surface }}>
@@ -474,7 +472,6 @@ export default function BookingScreen() {
         </View>
       </NativeModal>
 
-      {/* --- DateTimePicker Helper --- */}
       {showCustomTimePicker && (
         <DateTimePicker
           value={new Date()}
@@ -485,7 +482,6 @@ export default function BookingScreen() {
         />
       )}
 
-      {/* --- Modal: Status Notifications --- */}
       <RNModal
         isVisible={availabilityModal.visible}
         onBackdropPress={() => setAvailabilityModal({ ...availabilityModal, visible: false })}

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const API_BASE_URL = 'http://localhost:4000/api/v1'; // change to your IP/port
+export const API_BASE_URL = 'https://goatskin-clinic-molehill.ngrok-free.dev/api/v1'; // change to your IP/port
 
 const api = {
   async request(endpoint, method = 'GET', body = null, requiresAuth = false) {

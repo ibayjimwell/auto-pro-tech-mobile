@@ -2,15 +2,15 @@ import { View, Text, ScrollView, ActivityIndicator, Alert, RefreshControl, Touch
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useTheme } from "../../context/ThemeContext";
-import { useAuth } from "../../context/AuthContext";
-import appointmentsApi from "../../services/appointmentsApi";
-import tasksApi from "../../services/tasksApi";
-import estimateApi from "../../services/estimateApi";
-import additionalCostsApi from "../../services/additionalCostsApi";
-import invoicesApi from "../../services/invoicesApi";
+import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
+import appointmentsApi from "../services/appointmentsApi";
+import tasksApi from "../services/tasksApi";
+import estimateApi from "../services/estimateApi";
+import additionalCostsApi from "../services/additionalCostsApi";
+import invoicesApi from "../services/invoicesApi";
 import io from "socket.io-client";
-import { API_BASE_URL } from "../../services/api";
+import { API_BASE_URL } from "../services/api";
 
 // --- Configuration & Constants --- [cite: 199-205]
 const statusToStage = {

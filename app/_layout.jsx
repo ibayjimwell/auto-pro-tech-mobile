@@ -28,8 +28,7 @@ function RootLayoutNav() {
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="booking" options={{ title: "Book Appointment" }} />
-      <Stack.Screen name="services" options={{ title: "Our Services" }} />
-      <Stack.Screen name="estimate" options={{ title: "Service Estimate" }} />
+      <Stack.Screen name="appointments" options={{ title: "My Appointments" }} />
       <Stack.Screen name="tracking" options={{ title: "Track Appointment" }} />
       <Stack.Screen name="invoice" options={{ title: "Final Invoice" }} />
     </Stack>
