@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "auto-pro-tech-mobile",
-    "slug": "auto-pro-tech-mobile",
+    "name": "AutoCare",
+    "slug": "AutoProTech",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -43,7 +43,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "956b6379-224e-463d-b9b2-4287cd120846"
+        "projectId": "b24409bc-a741-48e6-b3ec-bf5eee6fae0d"
       }
     },
     "notifications": {

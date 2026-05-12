@@ -72,7 +72,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView 
-        className="flex-1" 
+        className="flex-1 pb-10" 
         style={{ backgroundColor: theme.background }}
         showsVerticalScrollIndicator={false}
     >

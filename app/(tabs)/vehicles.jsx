@@ -119,7 +119,7 @@ export default function VehiclesScreen() {
   }
 
   return (
-    <View className="flex-1" style={{ backgroundColor: theme.background }}>
+    <View className="flex-1 pb-10" style={{ backgroundColor: theme.background }}>
       {/* --- Custom Header --- */}
       <View className="px-6 pt-14 pb-4 flex-row justify-between items-end">
         <View>

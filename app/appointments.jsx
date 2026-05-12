@@ -71,25 +71,12 @@ export default function AllAppointmentsScreen() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: theme.background }}>
-      {/* --- Custom Header --- */}
-      <View className="px-6 pt-14 pb-6 flex-row items-center justify-between">
-        <TouchableOpacity 
-          onPress={() => router.back()}
-          className="w-10 h-10 rounded-full items-center justify-center border"
-          style={{ backgroundColor: theme.surface, borderColor: theme.border }}
-        >
-          <Ionicons name="arrow-back" size={20} color={theme.text} />
-        </TouchableOpacity>
-        <Text className="text-xl font-black" style={{ color: theme.text }}>Schedule</Text>
-        <View className="w-10" /> 
-      </View>
-
       <ScrollView 
         className="flex-1" 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
       >
-        <View className="px-6">
+        <View className="px-6 py-6">
           
           {/* --- Section Header --- */}
           <View className="mb-6">
