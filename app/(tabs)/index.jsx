@@ -6,6 +6,45 @@ import { useAuth } from "../../context/AuthContext";
 import { useState, useCallback, useEffect } from "react";
 import appointmentsApi from "../../services/appointmentsApi";
 
+// --- Status-based styling config (matches backend enum) ---
+const STATUS_CONFIG = {
+  PENDING: {
+    icon: "clock-outline",
+    color: "#ef4444",
+    label: "Pending",
+  },
+  CONFIRMED: {
+    icon: "check-circle-outline",
+    color: "#dc2626",
+    label: "Confirmed",
+  },
+  UNDER_INSPECTION: {
+    icon: "car-wrench",
+    color: "#3b82f6",
+    label: "Under Inspection",
+  },
+  WAITING_FOR_APPROVAL: {
+    icon: "clipboard-text-clock",
+    color: "#eab308",
+    label: "Awaiting Approval",
+  },
+  IN_PROGRESS: {
+    icon: "progress-wrench",
+    color: "#f97316",
+    label: "In Progress",
+  },
+  COMPLETED: {
+    icon: "check-circle",
+    color: "#22c55e",
+    label: "Completed",
+  },
+  CANCELLED: {
+    icon: "close-circle",
+    color: "#6b7280",
+    label: "Cancelled",
+  },
+};
+
 export default function HomeScreen() {
   const { theme, isDarkMode, toggleTheme } = useTheme();
   const { user } = useAuth();
@@ -15,6 +54,13 @@ export default function HomeScreen() {
   const [inProgressAppointments, setInProgressAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // --- Helper: Extract YYYY-MM-DD from a date string (handles ISO and plain formats) ---
+  const normalizeDateStr = (dateStr) => {
+    if (!dateStr) return '';
+    // If it's an ISO string like "2026-05-21T00:00:00.000Z", extract the date part
+    return dateStr.split('T')[0];
+  };
+
   // --- Logic: Load Data ---
   const loadUpcomingAppointment = async () => {
     if (!user?.id) return;
@@ -22,21 +68,32 @@ export default function HomeScreen() {
       const res = await appointmentsApi.list({ customerId: user.id, _t: Date.now() });
       const allAppointments = res.data || [];
       const now = new Date();
-      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayStr = now.toISOString().split('T')[0]; // "2026-05-13"
+      const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
 
       const upcoming = allAppointments
         .filter(apt => {
           if (apt.status !== 'CONFIRMED') return false;
-          const aptDate = new Date(apt.appointmentDate);
-          if (aptDate < todayMidnight) return false;
-          if (aptDate.getTime() === todayMidnight.getTime()) {
+          const aptDate = normalizeDateStr(apt.appointmentDate);
+          if (!aptDate) return false;
+          // Compare date strings (YYYY-MM-DD works as lexical comparison)
+          if (aptDate < todayStr) return false;
+          // Same day — check if time has passed
+          if (aptDate === todayStr && apt.appointmentTime) {
             const [hour, minute] = apt.appointmentTime.split(':').map(Number);
-            const aptTime = new Date().setHours(hour, minute, 0);
-            if (aptTime < now.getTime()) return false;
+            const aptMinutes = hour * 60 + minute;
+            if (aptMinutes <= currentTimeMinutes) return false;
           }
           return true;
         })
-        .sort((a, b) => new Date(a.appointmentDate) - new Date(b.appointmentDate));
+        .sort((a, b) => {
+          // Sort by date string first (YYYY-MM-DD works as lexical sort), then by time
+          const dateA = normalizeDateStr(a.appointmentDate);
+          const dateB = normalizeDateStr(b.appointmentDate);
+          const diff = dateA.localeCompare(dateB);
+          if (diff !== 0) return diff;
+          return (a.appointmentTime || '').localeCompare(b.appointmentTime || '');
+        });
 
       setUpcomingAppointment(upcoming[0] || null);
 
@@ -173,13 +230,17 @@ export default function HomeScreen() {
             className="p-5 rounded-[28px] border" 
             style={{ backgroundColor: theme.surface, borderColor: theme.border }}
           >
-            <View className="flex-row justify-between items-start mb-4">
-              <View className="flex-row items-center">
-                <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: theme.primary + '15' }}>
-                  <MaterialCommunityIcons name="car-cog" size={26} color={theme.primary} />
+              <View className="flex-row justify-between items-start mb-4">
+              <View className="flex-row items-center flex-1">
+                <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: (STATUS_CONFIG[upcomingAppointment.status]?.color || theme.primary) + '20' }}>
+                  <MaterialCommunityIcons
+                    name={STATUS_CONFIG[upcomingAppointment.status]?.icon || "car-cog"}
+                    size={26}
+                    color={STATUS_CONFIG[upcomingAppointment.status]?.color || theme.primary}
+                  />
                 </View>
-                <View>
-                  <Text className="text-lg font-black" style={{ color: theme.text }}>
+                <View className="flex-1 mr-2">
+                  <Text className="text-lg font-black" style={{ color: theme.text }} numberOfLines={1} ellipsizeMode="tail">
                     {upcomingAppointment.serviceType?.name || 'Service'}
                   </Text>
                   <Text className="text-xs font-bold opacity-50" style={{ color: theme.text }}>
@@ -187,8 +248,10 @@ export default function HomeScreen() {
                   </Text>
                 </View>
               </View>
-              <View className="px-3 py-1 rounded-lg" style={{ backgroundColor: theme.primary + '20' }}>
-                <Text className="text-[10px] font-black" style={{ color: theme.primary }}>{upcomingAppointment.status}</Text>
+              <View className="px-3 py-1 rounded-lg flex-shrink-0" style={{ backgroundColor: (STATUS_CONFIG[upcomingAppointment.status]?.color || theme.primary) + '20' }}>
+                <Text className="text-[10px] font-black" style={{ color: STATUS_CONFIG[upcomingAppointment.status]?.color || theme.primary }}>
+                  {STATUS_CONFIG[upcomingAppointment.status]?.label || upcomingAppointment.status}
+                </Text>
               </View>
             </View>
 
@@ -252,12 +315,12 @@ export default function HomeScreen() {
               style={{ backgroundColor: theme.surface, borderColor: theme.border }}
             >
               <View className="flex-row justify-between items-start mb-4">
-                <View className="flex-row items-center">
-                  <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: '#f59e0b20' }}>
-                    <MaterialCommunityIcons name="car-wrench" size={26} color="#f59e0b" />
+                <View className="flex-row items-center flex-1">
+                  <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: STATUS_CONFIG.UNDER_INSPECTION.color + '20' }}>
+                    <MaterialCommunityIcons name={STATUS_CONFIG.UNDER_INSPECTION.icon} size={26} color={STATUS_CONFIG.UNDER_INSPECTION.color} />
                   </View>
-                  <View>
-                    <Text className="text-lg font-black" style={{ color: theme.text }}>
+                  <View className="flex-1 mr-2">
+                    <Text className="text-lg font-black" style={{ color: theme.text }} numberOfLines={1} ellipsizeMode="tail">
                       {appointment.serviceType?.name || 'Service'}
                     </Text>
                     <Text className="text-xs font-bold opacity-50" style={{ color: theme.text }}>
@@ -265,21 +328,21 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                 </View>
-                <View className="px-3 py-1 rounded-lg" style={{ backgroundColor: '#f59e0b20' }}>
-                  <Text className="text-[10px] font-black" style={{ color: '#f59e0b' }}>{appointment.status}</Text>
+                <View className="px-3 py-1 rounded-lg flex-shrink-0" style={{ backgroundColor: STATUS_CONFIG.UNDER_INSPECTION.color + '20' }}>
+                  <Text className="text-[10px] font-black" style={{ color: STATUS_CONFIG.UNDER_INSPECTION.color }}>{STATUS_CONFIG.UNDER_INSPECTION.label}</Text>
                 </View>
               </View>
 
               <View className="flex-row items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
                 <View className="flex-row">
                   <View className="flex-row items-center mr-4">
-                    <Ionicons name="calendar-clear" size={14} color="#f59e0b" />
+                    <Ionicons name="calendar-clear" size={14} color={STATUS_CONFIG.UNDER_INSPECTION.color} />
                     <Text className="text-[13px] ml-1.5 font-bold" style={{ color: theme.textSecondary }}>
                       {formatDate(appointment.appointmentDate)}
                     </Text>
                   </View>
                   <View className="flex-row items-center">
-                    <Ionicons name="time" size={14} color="#f59e0b" />
+                    <Ionicons name="time" size={14} color={STATUS_CONFIG.UNDER_INSPECTION.color} />
                     <Text className="text-[13px] ml-1.5 font-bold" style={{ color: theme.textSecondary }}>
                       {formatTime(appointment.appointmentTime)}
                     </Text>
@@ -324,12 +387,12 @@ export default function HomeScreen() {
               style={{ backgroundColor: theme.surface, borderColor: theme.border }}
             >
               <View className="flex-row justify-between items-start mb-4">
-                <View className="flex-row items-center">
-                  <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: '#3b82f620' }}>
-                    <MaterialCommunityIcons name="progress-wrench" size={26} color="#3b82f6" />
+                <View className="flex-row items-center flex-1">
+                  <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: STATUS_CONFIG.IN_PROGRESS.color + '20' }}>
+                    <MaterialCommunityIcons name={STATUS_CONFIG.IN_PROGRESS.icon} size={26} color={STATUS_CONFIG.IN_PROGRESS.color} />
                   </View>
-                  <View>
-                    <Text className="text-lg font-black" style={{ color: theme.text }}>
+                  <View className="flex-1 mr-2">
+                    <Text className="text-lg font-black" style={{ color: theme.text }} numberOfLines={1} ellipsizeMode="tail">
                       {appointment.serviceType?.name || 'Service'}
                     </Text>
                     <Text className="text-xs font-bold opacity-50" style={{ color: theme.text }}>
@@ -337,21 +400,21 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                 </View>
-                <View className="px-3 py-1 rounded-lg" style={{ backgroundColor: '#3b82f620' }}>
-                  <Text className="text-[10px] font-black" style={{ color: '#3b82f6' }}>{appointment.status}</Text>
+                <View className="px-3 py-1 rounded-lg flex-shrink-0" style={{ backgroundColor: STATUS_CONFIG.IN_PROGRESS.color + '20' }}>
+                  <Text className="text-[10px] font-black" style={{ color: STATUS_CONFIG.IN_PROGRESS.color }}>{STATUS_CONFIG.IN_PROGRESS.label}</Text>
                 </View>
               </View>
 
               <View className="flex-row items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
                 <View className="flex-row">
                   <View className="flex-row items-center mr-4">
-                    <Ionicons name="calendar-clear" size={14} color="#3b82f6" />
+                    <Ionicons name="calendar-clear" size={14} color={STATUS_CONFIG.IN_PROGRESS.color} />
                     <Text className="text-[13px] ml-1.5 font-bold" style={{ color: theme.textSecondary }}>
                       {formatDate(appointment.appointmentDate)}
                     </Text>
                   </View>
                   <View className="flex-row items-center">
-                    <Ionicons name="time" size={14} color="#3b82f6" />
+                    <Ionicons name="time" size={14} color={STATUS_CONFIG.IN_PROGRESS.color} />
                     <Text className="text-[13px] ml-1.5 font-bold" style={{ color: theme.textSecondary }}>
                       {formatTime(appointment.appointmentTime)}
                     </Text>

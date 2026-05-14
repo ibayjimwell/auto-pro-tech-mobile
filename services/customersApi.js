@@ -8,6 +8,9 @@ const customersApi = {
     getCustomerAppointments(customerId) {
         return api.request(`/customers/${customerId}/appointments`, 'GET', null, true);
     },
+    getStats(customerId) {
+        return api.request(`/customers/${customerId}/stats`, 'GET', null, true);
+    },
     getMe() {
         return api.request('/auth/me', 'GET', null, true);
     },

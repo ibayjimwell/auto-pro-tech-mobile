@@ -7,6 +7,7 @@ import RNModal from "react-native-modal";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { useFocusEffect } from "@react-navigation/native";
+import { useLocalSearchParams } from "expo-router";
 import io from "socket.io-client";
 import { API_BASE_URL } from "../services/api";
 import appointmentsApi from "../services/appointmentsApi";
@@ -30,6 +31,7 @@ const dateToTimeString = (date) => {
 export default function BookingScreen() {
   const { theme } = useTheme();
   const { user } = useAuth();
+  const { serviceId } = useLocalSearchParams();
   const customerId = user?.id;
 
   const [loading, setLoading] = useState(true);
@@ -54,7 +56,13 @@ export default function BookingScreen() {
     try {
       const res = await serviceTypesApi.listActive();
       let data = res.data?.data || res.data || res;
-      setServices(Array.isArray(data) ? data : []);
+      const serviceList = Array.isArray(data) ? data : [];
+      setServices(serviceList);
+      // Auto-select service if serviceId param is provided
+      if (serviceId && serviceList.length > 0) {
+        const matched = serviceList.find(s => String(s.id) === String(serviceId));
+        if (matched) setSelectedService(matched);
+      }
     } catch (err) { console.error(err); }
   };
 

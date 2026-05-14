@@ -1,8 +1,35 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import authApi from '../services/authApi';
 
 const AuthContext = createContext();
+
+// --- Platform-aware storage wrapper ---
+const storage = {
+  async getItem(key) {
+    if (Platform.OS === 'web') {
+      return await AsyncStorage.getItem(key);
+    } else {
+      return await SecureStore.getItemAsync(key);
+    }
+  },
+  async setItem(key, value) {
+    if (Platform.OS === 'web') {
+      return await AsyncStorage.setItem(key, value);
+    } else {
+      return await SecureStore.setItemAsync(key, value);
+    }
+  },
+  async removeItem(key) {
+    if (Platform.OS === 'web') {
+      return await AsyncStorage.removeItem(key);
+    } else {
+      return await SecureStore.deleteItemAsync(key);
+    }
+  }
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -11,13 +38,19 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const loadStoredData = async () => {
-      const storedToken = await AsyncStorage.getItem('auth_token');
-      const storedUser = await AsyncStorage.getItem('auth_user');
-      if (storedToken && storedUser) {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+      try {
+        const storedToken = await storage.getItem('auth_token');
+        const storedUser = await storage.getItem('auth_user');
+        console.log('[Auth] Loaded token:', storedToken ? 'YES' : 'NO', 'Platform:', Platform.OS);
+        if (storedToken && storedUser) {
+          setToken(storedToken);
+          setUser(JSON.parse(storedUser));
+        }
+      } catch (error) {
+        console.error('[Auth] Failed to load from storage', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     loadStoredData();
   }, []);
@@ -26,19 +59,17 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authApi.login({ emailOrPhone, password });
       if (response.success) {
-        await AsyncStorage.setItem('auth_token', response.token);
-        await AsyncStorage.setItem('auth_user', JSON.stringify(response.user));
+        await storage.setItem('auth_token', response.token);
+        await storage.setItem('auth_user', JSON.stringify(response.user));
+        console.log('[Auth] Token saved, Platform:', Platform.OS);
         setToken(response.token);
         setUser(response.user);
         return { success: true };
       }
-      // If response.success is false (e.g., backend returns 200 but false)
       return { success: false, message: response.message || 'Login failed' };
     } catch (error) {
-      // This catches errors from api.login (network or 4xx/5xx responses)
-      console.error('Login error:', error);
-      const message = error.message || 'Invalid credentials or network error';
-      return { success: false, message };
+      console.error('[Auth] Login error:', error);
+      return { success: false, message: error.message };
     }
   };
 
@@ -46,23 +77,22 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authApi.register({ fullName, email, phone, password });
       if (response.success) {
-        await AsyncStorage.setItem('auth_token', response.token);
-        await AsyncStorage.setItem('auth_user', JSON.stringify(response.user));
+        await storage.setItem('auth_token', response.token);
+        await storage.setItem('auth_user', JSON.stringify(response.user));
         setToken(response.token);
         setUser(response.user);
         return { success: true };
       }
       return { success: false, message: response.message || 'Registration failed' };
     } catch (error) {
-      console.error('Register error:', error);
-      const message = error.message || 'Registration failed. Please try again.';
-      return { success: false, message };
+      console.error('[Auth] Register error:', error);
+      return { success: false, message: error.message };
     }
   };
 
   const logout = async () => {
-    await AsyncStorage.removeItem('auth_token');
-    await AsyncStorage.removeItem('auth_user');
+    await storage.removeItem('auth_token');
+    await storage.removeItem('auth_user');
     setToken(null);
     setUser(null);
   };

@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image } from "react-native";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -6,34 +6,57 @@ import { router } from "expo-router";
 import { useState, useEffect } from "react";
 import Modal from "react-native-modal";
 import customersApi from "../../services/customersApi";
+import appointmentsApi from "../../services/appointmentsApi";
 import pushNotificationApi from '../../services/pushNotificationApi';
+
+// --- Status color map (matches STATUS_CONFIG in other files) ---
+const STATUS_COLORS = {
+  COMPLETED: "#22c55e",
+  IN_PROGRESS: "#f97316",
+  UNDER_INSPECTION: "#3b82f6",
+  WAITING_FOR_APPROVAL: "#eab308",
+};
 
 export default function ProfileScreen() {
   const { theme, isDarkMode, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ vehicles: 0, visits: 0 });
+  const [completedAppointments, setCompletedAppointments] = useState([]);
   const [loggingOut, setLoggingOut] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // --- Logic: Fetch Stats (Functionality Preserved) ---
+  // --- Helpers ---
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const formatPrice = (price) => {
+    if (!price && price !== 0) return '';
+    return `₱${Number(price).toLocaleString()}`;
+  };
+
+  // --- Logic: Fetch Stats & Recent History ---
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchProfileData = async () => {
       if (!user?.id) return;
       try {
-        const vehiclesRes = await customersApi.getVehiclesByCustomer(user.id);
-        const appointmentsRes = await customersApi.getCustomerAppointments(user.id);
+        const res = await customersApi.getStats(user.id);
+        const data = res.data?.data || res.data || {};
         setStats({
-          vehicles: vehiclesRes.data?.length || 0,
-          visits: appointmentsRes.data?.length || 0,
+          vehicles: data.vehicleCount || 0,
+          visits: data.visitCount || 0,
         });
+        setCompletedAppointments(data.recentCompleted || []);
       } catch (error) {
         console.error("Error fetching stats:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchStats();
+    fetchProfileData();
   }, [user]);
 
   // --- Logic: Logout Handler (Functionality Preserved) ---
@@ -149,27 +172,41 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity 
-            activeOpacity={0.8}
-            className="p-5 mb-10 rounded-[28px] border shadow-sm" 
-            style={{ backgroundColor: theme.surface, borderColor: theme.border }}
-        >
-          <View className="flex-row justify-between items-start">
-            <View className="flex-1 mr-4">
-                <View className="px-2 py-0.5 rounded-md self-start mb-2" style={{ backgroundColor: theme.success + '15' }}>
-                    <Text className="text-[9px] font-black" style={{ color: theme.success }}>COMPLETED</Text>
-                </View>
-                <Text className="text-base font-black mb-1" style={{ color: theme.text }}>
-                    PMS (Preventive Maintenance)
-                </Text>
-                <View className="flex-row items-center">
-                    <Ionicons name="time-outline" size={12} color={theme.textSecondary} />
-                    <Text className="text-xs font-medium ml-1 opacity-60" style={{ color: theme.textSecondary }}>Jan 15, 2024</Text>
-                </View>
-            </View>
-            <Text className="text-lg font-black" style={{ color: theme.primary }}>₱3,500</Text>
+        {completedAppointments.length === 0 ? (
+          <View className="p-8 mb-10 rounded-[28px] border border-dashed items-center" style={{ backgroundColor: theme.surface, borderColor: theme.border }}>
+            <Ionicons name="time-outline" size={32} color={theme.textSecondary} />
+            <Text className="mt-3 text-sm font-bold opacity-60" style={{ color: theme.textSecondary }}>No completed services yet</Text>
           </View>
-        </TouchableOpacity>
+        ) : (
+          completedAppointments.map((apt) => (
+            <TouchableOpacity 
+              key={apt.id}
+              activeOpacity={0.8}
+              onPress={() => router.push(`/tracking?appointmentId=${apt.id}`)}
+              className="p-5 mb-3 rounded-[28px] border shadow-sm" 
+              style={{ backgroundColor: theme.surface, borderColor: theme.border }}
+            >
+              <View className="flex-row justify-between items-start">
+                <View className="flex-1 mr-4">
+                    <View className="px-2 py-0.5 rounded-md self-start mb-2" style={{ backgroundColor: STATUS_COLORS.COMPLETED + '15' }}>
+                        <Text className="text-[9px] font-black uppercase tracking-tight" style={{ color: STATUS_COLORS.COMPLETED }}>COMPLETED</Text>
+                    </View>
+                    <Text className="text-base font-black mb-1" style={{ color: theme.text }}>
+                      {apt.serviceType?.name || 'Service'}
+                    </Text>
+                    <View className="flex-row items-center">
+                        <Ionicons name="calendar-outline" size={12} color={theme.textSecondary} />
+                        <Text className="text-xs font-medium ml-1 opacity-60" style={{ color: theme.textSecondary }}>{formatDate(apt.appointmentDate)}</Text>
+                    </View>
+                    <Text className="text-[10px] font-bold mt-1 opacity-40 uppercase" style={{ color: theme.text }}>
+                      {apt.vehicle?.make} {apt.vehicle?.model}
+                    </Text>
+                </View>
+                <Text className="text-lg font-black" style={{ color: theme.primary }}>₱{Number(apt.serviceType?.basePrice || 0).toLocaleString()}</Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
 
         {/* --- Settings Menu List --- */}
         <View className="rounded-[32px] overflow-hidden border" style={{ backgroundColor: theme.surface, borderColor: theme.border }}>

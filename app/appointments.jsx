@@ -8,6 +8,45 @@ import { useAuth } from "../context/AuthContext";
 import appointmentsApi from "../services/appointmentsApi";
 import { useRouter } from "expo-router";
 
+// --- Status-based styling config ---
+const STATUS_CONFIG = {
+  PENDING: {
+    icon: "clock-outline",
+    color: "#ef4444",
+    label: "Pending",
+  },
+  CONFIRMED: {
+    icon: "check-circle-outline",
+    color: "#dc2626",
+    label: "Confirmed",
+  },
+  UNDER_INSPECTION: {
+    icon: "car-wrench",
+    color: "#3b82f6",
+    label: "Under Inspection",
+  },
+  WAITING_FOR_APPROVAL: {
+    icon: "clipboard-text-clock",
+    color: "#eab308",
+    label: "Awaiting Approval",
+  },
+  IN_PROGRESS: {
+    icon: "progress-wrench",
+    color: "#f97316",
+    label: "In Progress",
+  },
+  COMPLETED: {
+    icon: "check-circle",
+    color: "#22c55e",
+    label: "Completed",
+  },
+  CANCELLED: {
+    icon: "close-circle",
+    color: "#6b7280",
+    label: "Cancelled",
+  },
+};
+
 export default function AllAppointmentsScreen() {
   const { theme } = useTheme();
   const { user } = useAuth();
@@ -57,6 +96,10 @@ export default function AllAppointmentsScreen() {
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+
+  const getStatusConfig = (status) => {
+    return STATUS_CONFIG[status] || STATUS_CONFIG.PENDING;
   };
 
   // --- UI: Loading State ---
@@ -109,67 +152,72 @@ export default function AllAppointmentsScreen() {
             </View>
           ) : (
             // --- Appointment List ---
-            appointments.map((apt) => (
-              <View 
-                key={apt.id} 
-                className="p-5 mb-5 rounded-[32px] border shadow-sm shadow-black/5" 
-                style={{ backgroundColor: theme.surface, borderColor: theme.border }}
-              >
-                {/* Card Top Section */}
-                <View className="flex-row justify-between items-start mb-5">
-                  <View className="flex-row items-center flex-1">
-                    <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: theme.primary + '10' }}>
-                      <MaterialCommunityIcons name="car-settings" size={26} color={theme.primary} />
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-lg font-black" style={{ color: theme.text }}>
-                        {apt.serviceType?.name || 'Service'}
-                      </Text>
-                      <Text className="text-[11px] font-bold uppercase tracking-tighter opacity-50" style={{ color: theme.text }}>
-                        {apt.vehicle?.make} {apt.vehicle?.model} • {apt.vehicle?.plateNumber}
-                      </Text>
-                    </View>
-                  </View>
-                  
-                  {/* Status Badge */}
-                  <View className="px-3 py-1.5 rounded-xl" style={{ backgroundColor: theme.success + '15' }}>
-                    <Text className="text-[10px] font-black uppercase tracking-widest" style={{ color: theme.success }}>
-                      {apt.status}
-                    </Text>
-                  </View>
-                </View>
+            appointments.map((apt) => {
+              const statusConfig = getStatusConfig(apt.status);
+              const iconColor = statusConfig.color;
+              const badgeBg = statusConfig.color + '20';
 
-                {/* Card Details Divider */}
-                <View className="h-[1px] w-full mb-5 opacity-10" style={{ backgroundColor: theme.text }} />
-
-                {/* Card Bottom: Date/Time & Action */}
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center">
-                    <View className="flex-row items-center mr-5">
-                      <Ionicons name="calendar-clear" size={14} color={theme.primary} />
-                      <Text className="text-sm ml-1.5 font-bold" style={{ color: theme.textSecondary }}>
-                        {formatDate(apt.appointmentDate)}
-                      </Text>
+              return (
+                <TouchableOpacity
+                  key={apt.id}
+                  activeOpacity={0.8}
+                  onPress={() => router.push(`/tracking?appointmentId=${apt.id}`)}
+                  className="p-5 mb-5 rounded-[28px] border shadow-sm shadow-black/5"
+                  style={{ backgroundColor: theme.surface, borderColor: theme.border }}
+                >
+                  {/* Card Top Section */}
+                  <View className="flex-row justify-between items-start mb-4">
+                    <View className="flex-row items-center flex-1">
+                      <View
+                        className="w-12 h-12 rounded-2xl items-center justify-center mr-4"
+                        style={{ backgroundColor: badgeBg }}
+                      >
+                        <MaterialCommunityIcons name={statusConfig.icon} size={26} color={iconColor} />
+                      </View>
+                      <View className="flex-1 mr-2">
+                        <Text
+                          className="text-lg font-black"
+                          style={{ color: theme.text }}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {apt.serviceType?.name || 'Service'}
+                        </Text>
+                        <Text className="text-xs font-bold opacity-50" style={{ color: theme.text }}>
+                          {apt.vehicle?.make} {apt.vehicle?.model}
+                        </Text>
+                      </View>
                     </View>
-                    <View className="flex-row items-center">
-                      <Ionicons name="time" size={14} color={theme.primary} />
-                      <Text className="text-sm ml-1.5 font-bold" style={{ color: theme.textSecondary }}>
-                        {formatTime(apt.appointmentTime)}
+
+                    {/* Status Badge */}
+                    <View className="px-3 py-1 rounded-lg flex-shrink-0" style={{ backgroundColor: badgeBg }}>
+                      <Text className="text-[10px] font-black" style={{ color: iconColor }}>
+                        {statusConfig.label}
                       </Text>
                     </View>
                   </View>
 
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    className="w-12 h-12 rounded-2xl items-center justify-center shadow-md"
-                    style={{ backgroundColor: theme.primary, shadowColor: theme.primary }}
-                    onPress={() => router.push(`/tracking?appointmentId=${apt.id}`)}
-                  >
-                    <Ionicons name="compass" size={22} color="white" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
+                  {/* Card Bottom: Divider + Date/Time */}
+                  <View className="flex-row items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
+                    <View className="flex-row items-center flex-1">
+                      <View className="flex-row items-center mr-4">
+                        <Ionicons name="calendar-clear" size={14} color={iconColor} />
+                        <Text className="text-[13px] ml-1.5 font-bold" style={{ color: theme.textSecondary }}>
+                          {formatDate(apt.appointmentDate)}
+                        </Text>
+                      </View>
+                      <View className="flex-row items-center">
+                        <Ionicons name="time" size={14} color={iconColor} />
+                        <Text className="text-[13px] ml-1.5 font-bold" style={{ color: theme.textSecondary }}>
+                          {formatTime(apt.appointmentTime)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })
           )}
         </View>
       </ScrollView>
