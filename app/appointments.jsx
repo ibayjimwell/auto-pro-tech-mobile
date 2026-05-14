@@ -198,7 +198,7 @@ export default function AllAppointmentsScreen() {
                   </View>
 
                   {/* Card Bottom: Divider + Date/Time */}
-                  <View className="flex-row items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
+                  <View className="flex-row items-center justify-between pt-4 border-t" style={{ borderColor: theme.border }}>
                     <View className="flex-row items-center flex-1">
                       <View className="flex-row items-center mr-4">
                         <Ionicons name="calendar-clear" size={14} color={iconColor} />

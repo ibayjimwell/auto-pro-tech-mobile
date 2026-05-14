@@ -10,6 +10,9 @@ const serviceTypesApi = {
   // Get a single service type by ID
   get: (id) => api.request(`/service-types/${id}`, 'GET', null, true),
 
+  // Get top 4 trending services (by appointment count)
+  getTrending: () => api.request('/service-types/trending', 'GET', null, false),
+
   // Create a new service type (admin only)
   create: (data) => api.request('/service-types', 'POST', data, true),
 

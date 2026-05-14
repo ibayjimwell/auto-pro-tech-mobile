@@ -5,6 +5,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { useState, useCallback, useEffect } from "react";
 import appointmentsApi from "../../services/appointmentsApi";
+import serviceTypesApi from "../../services/serviceTypesApi";
 
 // --- Status-based styling config (matches backend enum) ---
 const STATUS_CONFIG = {
@@ -52,6 +53,7 @@ export default function HomeScreen() {
   const [upcomingAppointment, setUpcomingAppointment] = useState(null);
   const [underInspectionAppointments, setUnderInspectionAppointments] = useState([]);
   const [inProgressAppointments, setInProgressAppointments] = useState([]);
+  const [trendingServices, setTrendingServices] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // --- Helper: Extract YYYY-MM-DD from a date string (handles ISO and plain formats) ---
@@ -62,6 +64,16 @@ export default function HomeScreen() {
   };
 
   // --- Logic: Load Data ---
+  const loadTrendingServices = async () => {
+    try {
+      const res = await serviceTypesApi.getTrending();
+      const data = res.data?.data || res.data || [];
+      setTrendingServices(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to load trending services:", err);
+    }
+  };
+
   const loadUpcomingAppointment = async () => {
     if (!user?.id) return;
     try {
@@ -111,6 +123,7 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       loadUpcomingAppointment();
+      loadTrendingServices();
     }, [user?.id])
   );
 
@@ -118,6 +131,21 @@ export default function HomeScreen() {
   const formatTime = (timeStr) => {
     if (!timeStr) return '';
     return timeStr.slice(0, 5);
+  };
+
+  const formatDuration = (minutes) => {
+    if (!minutes) return '';
+    if (minutes >= 60) {
+      const hrs = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return mins > 0 ? `${hrs}h ${mins}m` : `${hrs} hour${hrs > 1 ? 's' : ''}`;
+    }
+    return `${minutes} mins`;
+  };
+
+  const formatPrice = (price) => {
+    if (!price && price !== 0) return '';
+    return `₱${Number(price).toLocaleString()}`;
   };
 
   const formatDate = (dateStr) => {
@@ -255,7 +283,7 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            <View className="flex-row items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
+            <View className="flex-row items-center justify-between pt-4 border-t" style={{ borderColor: theme.border }}>
               <View className="flex-row">
                 <View className="flex-row items-center mr-4">
                   <Ionicons name="calendar-clear" size={14} color={theme.primary} />
@@ -275,7 +303,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ) : (
           <View className="p-8 rounded-[28px] items-center border border-dashed" style={{ backgroundColor: theme.surface, borderColor: theme.border }}>
-            <View className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-900 items-center justify-center mb-4">
+            <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-4">
               <Ionicons name="calendar-outline" size={32} color={theme.textSecondary} />
             </View>
             <Text className="text-center font-bold mb-4" style={{ color: theme.textSecondary }}>
@@ -333,7 +361,7 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-              <View className="flex-row items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
+              <View className="flex-row items-center justify-between pt-4 border-t" style={{ borderColor: theme.border }}>
                 <View className="flex-row">
                   <View className="flex-row items-center mr-4">
                     <Ionicons name="calendar-clear" size={14} color={STATUS_CONFIG.UNDER_INSPECTION.color} />
@@ -354,7 +382,7 @@ export default function HomeScreen() {
           ))
         ) : (
           <View className="p-6 rounded-[28px] items-center border border-dashed mb-3" style={{ backgroundColor: theme.surface, borderColor: theme.border }}>
-            <View className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-900 items-center justify-center mb-3">
+            <View className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center mb-3">
               <Ionicons name="checkmark-circle-outline" size={24} color={theme.textSecondary} />
             </View>
             <Text className="text-center font-bold text-sm" style={{ color: theme.textSecondary }}>
@@ -405,7 +433,7 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-              <View className="flex-row items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
+              <View className="flex-row items-center justify-between pt-4 border-t" style={{ borderColor: theme.border }}>
                 <View className="flex-row">
                   <View className="flex-row items-center mr-4">
                     <Ionicons name="calendar-clear" size={14} color={STATUS_CONFIG.IN_PROGRESS.color} />
@@ -426,7 +454,7 @@ export default function HomeScreen() {
           ))
         ) : (
           <View className="p-6 rounded-[28px] items-center border border-dashed mb-3" style={{ backgroundColor: theme.surface, borderColor: theme.border }}>
-            <View className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-900 items-center justify-center mb-3">
+            <View className="w-12 h-12 rounded-full bg-gray-100 justify-center mb-3">
               <Ionicons name="checkmark-circle-outline" size={24} color={theme.textSecondary} />
             </View>
             <Text className="text-center font-bold text-sm" style={{ color: theme.textSecondary }}>
@@ -457,12 +485,27 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
 
-      {/* --- Section: Popular Services --- */}
+      {/* --- Section: Trending Services --- */}
       <View className="px-6 mt-8 mb-12">
         <Text className="text-lg font-black mb-4 px-1" style={{ color: theme.text }}>Trending Services</Text>
-        <ServiceCard name="PMS Check" duration="2 hours" price="₱3,500" icon="speedometer" theme={theme} />
-        <ServiceCard name="Synthetic Oil Change" duration="45 mins" price="₱1,500" icon="water" theme={theme} />
-        <ServiceCard name="Wheel Balancing" duration="30 mins" price="₱800" icon="disc" theme={theme} />
+        {trendingServices.length === 0 ? (
+          <View className="p-6 rounded-3xl items-center border border-dashed" style={{ borderColor: theme.border }}>
+            <Text className="text-sm font-bold opacity-50" style={{ color: theme.textSecondary }}>No trending services yet</Text>
+          </View>
+        ) : (
+          trendingServices.map((service, index) => (
+            <ServiceCard
+              key={service.id}
+              name={service.name}
+              duration={formatDuration(service.durationMinutes)}
+              price={formatPrice(service.basePrice)}
+              rank={index + 1}
+              count={service.appointmentCount}
+              theme={theme}
+              onPress={() => router.push(`/booking?serviceId=${service.id}`)}
+            />
+          ))
+        )}
       </View>
     </ScrollView>
   );
@@ -503,24 +546,45 @@ const VehicleCard = ({ name, plate, year, theme }) => (
 );
 
 // --- Sub-Component: Service Card ---
-const ServiceCard = ({ name, duration, price, icon, theme }) => (
-  <TouchableOpacity 
-    activeOpacity={0.8}
-    className="flex-row justify-between items-center p-5 mb-4 rounded-3xl border" 
-    style={{ backgroundColor: theme.surface, borderColor: theme.border }}
-  >
-    <View className="flex-row items-center flex-1">
-      <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: theme.background }}>
-        <Ionicons name={icon} size={22} color={theme.primary} />
+const SERVICE_ICONS = ["speedometer", "water", "disc", "car-wrench", "oil", "tire", "brake-pads", "engine", "car-wash", "wrench", "car-settings"];
+
+const ServiceCard = ({ name, duration, price, rank, count, theme, onPress }) => {
+  const iconName = SERVICE_ICONS[(rank - 1) % SERVICE_ICONS.length];
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={onPress}
+      className="flex-row justify-between items-center p-5 mb-4 rounded-3xl border"
+      style={{ backgroundColor: theme.surface, borderColor: theme.border }}
+    >
+      <View className="flex-row items-center flex-1">
+        <View className="relative">
+          <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: theme.background }}>
+            <Ionicons name={iconName} size={22} color={theme.primary} />
+          </View>
+          {/* Rank badge */}
+          <View
+            className="absolute -top-1 -left-1 w-5 h-5 rounded-full items-center justify-center"
+            style={{ backgroundColor: theme.primary }}
+          >
+            <Text className="text-[9px] font-black text-white">#{rank}</Text>
+          </View>
+        </View>
+        <View className="flex-1 ml-2">
+          <Text className="text-base font-black" style={{ color: theme.text }} numberOfLines={1} ellipsizeMode="tail">{name}</Text>
+          <View className="flex-row items-center mt-0.5">
+            <Text className="text-xs font-bold opacity-50" style={{ color: theme.text }}>{duration}</Text>
+            <View className="w-1 h-1 rounded-full mx-2 opacity-30" style={{ backgroundColor: theme.text }} />
+            <Text className="text-[10px] font-black uppercase opacity-40" style={{ color: theme.textSecondary }}>
+              {count} booking{count !== 1 ? 's' : ''}
+            </Text>
+          </View>
+        </View>
       </View>
-      <View className="flex-1">
-        <Text className="text-base font-black" style={{ color: theme.text }}>{name}</Text>
-        <Text className="text-xs font-bold opacity-50" style={{ color: theme.text }}>{duration}</Text>
+      <View className="items-end ml-2">
+        <Text className="text-base font-black" style={{ color: theme.primary }}>{price}</Text>
+        <Text className="text-[10px] font-bold uppercase tracking-tighter opacity-40" style={{ color: theme.text }}>From</Text>
       </View>
-    </View>
-    <View className="items-end">
-      <Text className="text-base font-black" style={{ color: theme.primary }}>{price}</Text>
-      <Text className="text-[10px] font-bold uppercase tracking-tighter opacity-40" style={{ color: theme.text }}>From</Text>
-    </View>
-  </TouchableOpacity>
-);
+    </TouchableOpacity>
+  );
+};
