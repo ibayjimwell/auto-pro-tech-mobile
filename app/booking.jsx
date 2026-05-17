@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Platform, Alert, Modal as NativeModal } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Platform, Alert, Modal as NativeModal, TextInput } from "react-native";
 import { useState, useEffect, useCallback } from "react";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Calendar } from "react-native-calendars";
