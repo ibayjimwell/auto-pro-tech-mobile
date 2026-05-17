@@ -50,6 +50,7 @@ export default function BookingScreen() {
   const [showCustomTimePicker, setShowCustomTimePicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [availabilityModal, setAvailabilityModal] = useState({ visible: false, available: false, message: "" });
+  const [notes, setNotes] = useState("");
 
   // --- Data Fetching with cache busting ---
   const loadServices = async () => {
@@ -193,7 +194,7 @@ export default function BookingScreen() {
         serviceTypeId: selectedService.id,
         appointmentDate: dateStr,
         appointmentTime: finalTime,
-        notes: "",
+        notes: notes,
       });
       notify.success("Appointment booked!");
       setSelectedService(null);
@@ -355,6 +356,29 @@ export default function BookingScreen() {
               ))}
             </View>
           )}
+        </View>
+
+        {/* Additional Notes / Describe the issue */}
+        <View className="mb-8">
+          <View className="flex-row items-center mb-4">
+            <View className="w-8 h-8 rounded-full items-center justify-center mr-3" style={{ backgroundColor: theme.primary }}>
+              <Text className="text-white font-black text-xs">4</Text>
+            </View>
+            <Text className="text-lg font-black" style={{ color: theme.text }}>Describe the issue (optional)</Text>
+          </View>
+          <TextInput
+            className="p-5 rounded-[28px] border"
+            style={{ backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }}
+            placeholder="e.g., Engine noise, AC not cooling, etc."
+            placeholderTextColor={theme.textSecondary}
+            multiline
+            numberOfLines={3}
+            value={notes}
+            onChangeText={setNotes}
+          />
+          <Text className="text-xs mt-2 opacity-50" style={{ color: theme.textSecondary }}>
+            Tell us more about your vehicle's condition or special requests.
+          </Text>
         </View>
 
         {/* Schedule */}

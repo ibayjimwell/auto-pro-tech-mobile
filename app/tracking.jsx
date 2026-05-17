@@ -415,6 +415,14 @@ export default function TrackingScreen() {
                 <Text className="text-xs font-bold opacity-50" style={{ color: theme.textSecondary }}>
                     {appointment.vehicle?.make} {appointment.vehicle?.model} • {appointment.vehicle?.plateNumber}
                 </Text>
+                {appointment.notes && (
+                  <View className="flex-row items-start pt-1">
+                    <Ionicons name="document-text-outline" size={18} color={theme.textSecondary} style={{ marginRight: 8 }} />
+                    <Text className="flex-1 text-xs leading-5 font-medium" style={{ color: theme.textSecondary }}>
+                      {appointment.notes}
+                    </Text>
+                  </View>
+                )}
             </View>
           </View>
           
@@ -427,6 +435,7 @@ export default function TrackingScreen() {
                 <Ionicons name="time-outline" size={14} color={theme.textSecondary} />
                 <Text className="text-xs font-bold ml-2" style={{ color: theme.text }}>{formatTime12h(appointment.appointmentTime)}</Text>
             </View>
+            
           </View>
         </View>
 
@@ -641,7 +650,7 @@ export default function TrackingScreen() {
 
         {/* --- Progress Timeline --- [cite: 364-372] */}
         <View className="mb-10">
-            <Text className="text-xl font-black mb-8" style={{ color: theme.text }}>Milestones</Text>
+            <Text className="text-xl font-black mb-8" style={{ color: theme.text }}>Progress</Text>
             {stages.map((stage, index) => {
                 const isActive = index <= currentStage;
                 const isCurrent = index === currentStage;
@@ -672,11 +681,9 @@ export default function TrackingScreen() {
                             >
                                 {stage.name}
                             </Text>
-                            {isCurrent && (
-                                <Text className="text-xs font-medium mt-1 leading-5" style={{ color: theme.textSecondary }}>
-                                    {stage.description}
-                                </Text>
-                            )}
+                              <Text className="text-xs font-medium mt-1 leading-5" style={{ color: theme.textSecondary }}>
+                                  {stage.description}
+                              </Text>
                         </View>
                     </View>
                 );
