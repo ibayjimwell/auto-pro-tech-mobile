@@ -77,9 +77,6 @@ export default function ServicesScreen() {
         
         {/* --- Header Section --- */}
         <View className="mb-8">
-          <Text className="text-sm font-bold uppercase tracking-[2px] opacity-50" style={{ color: theme.text }}>
-            Expert Care
-          </Text>
           <Text className="text-3xl font-black" style={{ color: theme.text }}>
             Our <Text style={{ color: theme.primary }}>Services</Text>
           </Text>
@@ -173,7 +170,7 @@ export default function ServicesScreen() {
         <View className="mt-4 p-6 rounded-3xl items-center" style={{ backgroundColor: theme.primary + '05' }}>
             <Ionicons name="information-circle-outline" size={20} color={theme.textSecondary} />
             <Text className="text-[11px] text-center mt-2 font-medium opacity-50" style={{ color: theme.text }}>
-                Prices may vary depending on vehicle make and model.{"\n"}All services include a free multi-point inspection.
+                Prices may vary depending on vehicle issue, make and model.{"\n"}All services include a free inspection.
             </Text>
         </View>
         

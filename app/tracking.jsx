@@ -12,7 +12,7 @@ import invoicesApi from "../services/invoicesApi";
 import io from "socket.io-client";
 import { API_BASE_URL } from "../services/api";
 
-// --- Configuration & Constants --- [cite: 199-205]
+// --- Configuration & Constants ---
 const statusToStage = {
   PENDING: 0,
   CONFIRMED: 1,
@@ -31,7 +31,7 @@ const stages = [
   { name: "Completed", description: "All services finished. Vehicle is ready.", icon: "check-decagram" },
 ];
 
-// --- Helper Functions --- [cite: 206-210]
+// --- Helper Functions ---
 const formatTime12h = (time24) => {
   if (!time24) return "";
   const [hour, minute] = time24.split(":");
@@ -52,7 +52,7 @@ export default function TrackingScreen() {
   const { user } = useAuth();
   const { appointmentId } = useLocalSearchParams();
 
-  // --- State Management --- [cite: 212-217]
+  // --- State Management ---
   const [appointment, setAppointment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -71,7 +71,7 @@ export default function TrackingScreen() {
   const socketRef = useRef(null);
   const isMounted = useRef(true);
 
-  // ---------- Fetch functions (Logic Unchanged) ---------- [cite: 218-228]
+  // ---------- Fetch functions ----------
   const fetchAppointment = useCallback(async () => {
     if (!appointmentId || !user?.id) return null;
     try {
@@ -112,8 +112,15 @@ export default function TrackingScreen() {
       const labors = adjustmentsArray.filter(a => a.type === 'labor');
       const discounts = adjustmentsArray.filter(a => a.type === 'discount');
       setAdjustments({
-        laborItems: labors.map(l => ({ amount: parseFloat(l.amount) })),
-        discounts: discounts.map(d => ({ type: d.discountType, value: parseFloat(d.discountValue) })),
+        laborItems: labors.map(l => ({ 
+          amount: parseFloat(l.amount), 
+          label: l.label || l.description || "Labor" 
+        })),
+        discounts: discounts.map(d => ({ 
+          type: d.discountType, 
+          value: parseFloat(d.discountValue),
+          label: d.label || d.description || "Discount"
+        })),
       });
     } catch (err) {
       console.error("Failed to load adjustments:", err);
@@ -140,9 +147,13 @@ export default function TrackingScreen() {
       );
       if (approvedEstimate) {
         setOriginalEstimateTotal(parseFloat(approvedEstimate.totalAmount));
+      } else {
+        // Fallback: maybe the invoice is still PENDING_APPROVAL? For IN_PROGRESS it should be approved.
+        setOriginalEstimateTotal(0);
       }
     } catch (err) {
       console.error("Failed to load original estimate:", err);
+      setOriginalEstimateTotal(0);
     }
   }, [appointmentId]);
 
@@ -172,7 +183,7 @@ export default function TrackingScreen() {
     refreshAllData();
   }, [refreshAllData]);
 
-  // ---------- WebSocket real‑time ---------- [cite: 230-237]
+  // ---------- WebSocket real‑time ----------
   useEffect(() => {
     const socketUrl = API_BASE_URL.replace("/api/v1", "");
     const socket = io(socketUrl, { transports: ["websocket"], reconnectionAttempts: 5 });
@@ -213,7 +224,7 @@ export default function TrackingScreen() {
     };
   }, [appointmentId, fetchTasks, fetchAdjustments, fetchAdditionalCosts, refreshAllData]);
 
-  // ---------- Compute costs ---------- [cite: 238-248]
+  // ---------- Compute costs ----------
   const computeInitialCosting = () => {
     if (!appointment) return { servicePrice: 0, partsItems: [], laborTotal: 0, discountTotal: 0, grandTotal: 0 };
     const servicePrice = parseFloat(appointment.serviceType?.basePrice) || 0;
@@ -256,7 +267,7 @@ export default function TrackingScreen() {
     return total;
   };
 
-  // ---------- Additional Cost Approval ---------- [cite: 249-254]
+  // ---------- Additional Cost Approval ----------
   const handleApproveCost = async (costId) => {
     setApproveLoading(costId);
     try {
@@ -294,7 +305,7 @@ export default function TrackingScreen() {
     );
   };
 
-  // ---------- Main Action Handlers ---------- [cite: 255-267]
+  // ---------- Main Action Handlers ----------
   const handleToggleExclude = (findingId) => {
     setExcludedFindingIds(prev => {
       if (prev.includes(findingId)) {
@@ -307,14 +318,32 @@ export default function TrackingScreen() {
   const handleApprove = () => setApproveModalVisible(true);
 
   const confirmApprove = async () => {
+    // Guard: Prevent action if appointment is not waiting for approval
+    if (appointment?.status !== "WAITING_FOR_APPROVAL") {
+      Alert.alert("Already Processed", "This estimate has already been approved or cancelled.");
+      setApproveModalVisible(false);
+      return;
+    }
+
     setApproveModalVisible(false);
     setActionLoading(true);
+
     try {
       await appointmentsApi.approveEstimate(appointmentId, excludedFindingIds);
-      Alert.alert("Approved!", "Your estimate has been approved. Work is now in progress.");
+      
+      // Immediately refresh data to get the new status
       await refreshAllData();
+      
+      Alert.alert("Approved!", "Your estimate has been approved. Work is now in progress.");
+      
     } catch (err) {
-      Alert.alert("Error", err.message || "Failed to approve estimate.");
+      let errorMessage = "Failed to approve estimate.";
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      Alert.alert("Error", errorMessage);
+      // Refresh anyway to ensure UI matches server state
+      await refreshAllData();
     } finally {
       setActionLoading(false);
     }
@@ -334,7 +363,7 @@ export default function TrackingScreen() {
       Alert.alert("Rejected", "Your estimate has been rejected. The appointment has been cancelled.");
       await refreshAllData();
     } catch (err) {
-      Alert.alert("Error", err.message || "Failed to reject estimate.");
+      Alert.alert("Error", err.response?.data?.message || "Failed to reject estimate.");
     } finally {
       setActionLoading(false);
     }
@@ -365,6 +394,15 @@ export default function TrackingScreen() {
   const isCancelled = appointment.status === "CANCELLED";
   const initialCosting = computeInitialCosting();
   const additionalTotal = computeAdditionalTotal();
+  
+  // For IN_PROGRESS: use approved estimate total if available, otherwise fallback to computed total (which already excludes skipped findings)
+  let totalCost = 0;
+  if (isInProgress) {
+    const baseTotal = originalEstimateTotal > 0 ? originalEstimateTotal : initialCosting.grandTotal;
+    totalCost = baseTotal + additionalTotal;
+  } else {
+    totalCost = initialCosting.grandTotal;
+  }
 
   return (
     <ScrollView
@@ -375,12 +413,12 @@ export default function TrackingScreen() {
     >
       <View className="px-6 pt-10 pb-20">
         
-        {/* --- Header Section --- [cite: 272-274] */}
+        {/* --- Header Section --- */}
         <View className="mb-8">
           <View className="flex-row justify-between items-end">
             <View>
               <Text className="text-[10px] font-black uppercase tracking-[2px] opacity-40 mb-1" style={{ color: theme.text }}>
-                Track Order
+                Tracking No.
               </Text>
               <Text className="text-3xl font-black" style={{ color: theme.text }}>
                 #{appointment.id ? appointment.id.slice(0, 8).toUpperCase() : 'N/A'}
@@ -402,7 +440,7 @@ export default function TrackingScreen() {
           </View>
         </View>
 
-        {/* --- Vehicle Card --- [cite: 275-278] */}
+        {/* --- Vehicle Card --- */}
         <View className="p-6 rounded-[32px] mb-8 shadow-sm border" style={{ backgroundColor: theme.surface, borderColor: theme.border }}>
           <View className="flex-row items-center mb-4">
             <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: theme.primary + '10' }}>
@@ -435,11 +473,10 @@ export default function TrackingScreen() {
                 <Ionicons name="time-outline" size={14} color={theme.textSecondary} />
                 <Text className="text-xs font-bold ml-2" style={{ color: theme.text }}>{formatTime12h(appointment.appointmentTime)}</Text>
             </View>
-            
           </View>
         </View>
 
-        {/* --- Tasks List Section --- [cite: 279-302] */}
+        {/* --- Tasks List Section --- */}
         {(isUnderInspection || isWaitingForApproval || isInProgress || isCompleted) && (
           <View className="mb-10">
             <View className="flex-row justify-between items-center mb-5">
@@ -530,11 +567,11 @@ export default function TrackingScreen() {
           </View>
         )}
 
-        {/* --- Costing Sections --- [cite: 304-329] */}
+        {/* --- Costing Sections --- */}
         {(isUnderInspection || isWaitingForApproval || isInProgress || isCompleted) && (
           <View className="p-8 rounded-[32px] mb-10 border" style={{ backgroundColor: theme.surface, borderColor: theme.border }}>
             <Text className="text-xl font-black mb-6" style={{ color: theme.text }}>
-                {(isUnderInspection || isWaitingForApproval) ? "Price Estimate" : "Financial Summary"}
+                {(isUnderInspection || isWaitingForApproval) ? "Estimate Cost" : "Costing Summary"}
             </Text>
 
             {/* Base Service */}
@@ -543,7 +580,7 @@ export default function TrackingScreen() {
               <Text className="text-sm font-black" style={{ color: theme.text }}>₱{initialCosting.servicePrice.toFixed(2)}</Text>
             </View>
 
-            {/* Parts & Labor */}
+            {/* Parts from findings */}
             {initialCosting.partsItems.map((item, i) => (
               <View key={i} className="flex-row justify-between mb-4">
                 <Text className="text-sm font-medium opacity-60" style={{ color: theme.text }}>{item.name} (x{item.quantity})</Text>
@@ -551,18 +588,23 @@ export default function TrackingScreen() {
               </View>
             ))}
 
+            {/* Extra Labor items with description */}
             {initialCosting.laborTotal > 0 && (
-              <View className="flex-row justify-between mb-4">
-                <Text className="text-sm font-medium opacity-60" style={{ color: theme.text }}>Extra Labor</Text>
-                <Text className="text-sm font-black" style={{ color: theme.text }}>₱{initialCosting.laborTotal.toFixed(2)}</Text>
-              </View>
+              adjustments.laborItems.map((labor, idx) => (
+                <View key={idx} className="flex-row justify-between mb-4">
+                  <Text className="text-sm font-medium opacity-60" style={{ color: theme.text }}>{labor.label}</Text>
+                  <Text className="text-sm font-black" style={{ color: theme.text }}>₱{labor.amount.toFixed(2)}</Text>
+                </View>
+              ))
             )}
 
-            {/* Additional Costs (For In Progress) */}
+            {/* Additional Costs (Parts, Labor, etc.) during IN_PROGRESS */}
             {isInProgress && additionalCosts.map(cost => (
                 <View key={cost.id} className="flex-row justify-between items-center mb-4 py-2 border-y border-dashed border-border/30">
                     <View className="flex-1 pr-4">
-                        <Text className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">New Finding Added</Text>
+                        <Text className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">
+                          {cost.type === 'part' ? 'New Part Added' : 'New Labor Added'}
+                        </Text>
                         <Text className="text-xs font-bold" style={{ color: theme.text }}>{cost.description}</Text>
                         <View className="flex-row items-center mt-1">
                             <Text className={`text-[10px] font-black uppercase ${cost.status === 'PENDING' ? 'text-amber-600' : 'text-emerald-600'}`}>
@@ -588,20 +630,22 @@ export default function TrackingScreen() {
                 </View>
             ))}
 
-            {/* Discounts */}
+            {/* Discounts with description */}
             {initialCosting.discountTotal > 0 && (
-              <View className="flex-row justify-between mb-4 px-4 py-3 rounded-2xl" style={{ backgroundColor: theme.success + '10' }}>
-                <Text className="text-sm font-black" style={{ color: theme.success }}>Promo Discount</Text>
-                <Text className="text-sm font-black" style={{ color: theme.success }}>- ₱{initialCosting.discountTotal.toFixed(2)}</Text>
-              </View>
+              adjustments.discounts.map((discount, idx) => (
+                <View key={idx} className="flex-row justify-between mb-4 px-4 py-3 rounded-2xl" style={{ backgroundColor: theme.success + '10' }}>
+                  <Text className="text-sm font-black" style={{ color: theme.success }}>{discount.label}</Text>
+                  <Text className="text-sm font-black" style={{ color: theme.success }}>- ₱{discount.value.toFixed(2)}</Text>
+                </View>
+              ))
             )}
 
-            {/* Grand Total */}
+            {/* Grand Total - changed label to "Total Cost" */}
             <View className="mt-6 pt-6 border-t flex-row justify-between items-center" style={{ borderTopColor: theme.border }}>
-              <Text className="text-lg font-black uppercase tracking-wider" style={{ color: theme.text }}>Total Due</Text>
+              <Text className="text-lg font-black uppercase tracking-wider" style={{ color: theme.text }}>Total Cost</Text>
               <View className="items-end">
                 <Text className="text-3xl font-black" style={{ color: theme.primary }}>
-                    ₱{(isInProgress ? (originalEstimateTotal + additionalTotal) : initialCosting.grandTotal).toFixed(2)}
+                    ₱{totalCost.toFixed(2)}
                 </Text>
                 <Text className="text-[10px] font-bold opacity-40 uppercase" style={{ color: theme.text }}>Tax & Fees Incl.</Text>
               </View>
@@ -609,7 +653,7 @@ export default function TrackingScreen() {
           </View>
         )}
 
-        {/* --- Cancellation Note --- [cite: 336-337] */}
+        {/* --- Cancellation Note --- */}
         {isCancelled && (
           <View className="p-8 rounded-[32px] mb-8 border items-center text-center" style={{ backgroundColor: theme.error + '05', borderColor: theme.error + '30' }}>
             <Ionicons name="alert-circle" size={40} color={theme.error} />
@@ -618,14 +662,14 @@ export default function TrackingScreen() {
           </View>
         )}
 
-        {/* --- Action Buttons --- [cite: 338-343] */}
+        {/* --- Action Buttons --- */}
         {isWaitingForApproval && (
           <View className="flex-row gap-4 mb-10">
             <TouchableOpacity
               onPress={handleReject}
               disabled={actionLoading}
               className="flex-1 h-16 rounded-[24px] items-center justify-center border-2"
-              style={{ borderColor: theme.error }}
+              style={{ borderColor: theme.error, opacity: actionLoading ? 0.5 : 1 }}
             >
                 <Text className="text-sm font-black uppercase tracking-widest" style={{ color: theme.error }}>Reject</Text>
             </TouchableOpacity>
@@ -634,7 +678,7 @@ export default function TrackingScreen() {
                 onPress={handleApprove}
                 disabled={actionLoading}
                 className="flex-[2] h-16 rounded-[24px] items-center justify-center shadow-xl shadow-emerald-500/30"
-                style={{ backgroundColor: theme.success }}
+                style={{ backgroundColor: theme.success, opacity: actionLoading ? 0.6 : 1 }}
             >
                 {actionLoading ? (
                   <ActivityIndicator color="#fff" />
@@ -648,7 +692,7 @@ export default function TrackingScreen() {
           </View>
         )}
 
-        {/* --- Progress Timeline --- [cite: 364-372] */}
+        {/* --- Progress Timeline --- */}
         <View className="mb-10">
             <Text className="text-xl font-black mb-8" style={{ color: theme.text }}>Progress</Text>
             {stages.map((stage, index) => {
@@ -681,16 +725,16 @@ export default function TrackingScreen() {
                             >
                                 {stage.name}
                             </Text>
-                              <Text className="text-xs font-medium mt-1 leading-5" style={{ color: theme.textSecondary }}>
-                                  {stage.description}
-                              </Text>
+                            <Text className="text-xs font-medium mt-1 leading-5" style={{ color: theme.textSecondary }}>
+                                {stage.description}
+                            </Text>
                         </View>
                     </View>
                 );
             })}
         </View>
 
-        {/* --- Modals --- [cite: 344-363] */}
+        {/* --- Approve Modal --- */}
         <Modal visible={approveModalVisible} transparent animationType="slide">
           <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
             <View className="p-8 rounded-t-[40px]" style={{ backgroundColor: theme.surface }}>
@@ -706,17 +750,32 @@ export default function TrackingScreen() {
               </View>
 
               <View className="flex-row gap-4">
-                <TouchableOpacity onPress={() => setApproveModalVisible(false)} className="flex-1 h-14 rounded-2xl items-center justify-center" style={{ backgroundColor: theme.background }}>
+                <TouchableOpacity 
+                  onPress={() => setApproveModalVisible(false)} 
+                  className="flex-1 h-14 rounded-2xl items-center justify-center" 
+                  style={{ backgroundColor: theme.background }}
+                  disabled={actionLoading}
+                >
                   <Text className="font-bold" style={{ color: theme.text }}>Go Back</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={confirmApprove} className="flex-[2] h-14 rounded-2xl items-center justify-center" style={{ backgroundColor: theme.success }}>
-                  <Text className="text-white font-black uppercase tracking-widest">Approve & Start</Text>
+                <TouchableOpacity 
+                  onPress={confirmApprove} 
+                  disabled={actionLoading}
+                  className="flex-[2] h-14 rounded-2xl items-center justify-center" 
+                  style={{ backgroundColor: theme.success, opacity: actionLoading ? 0.6 : 1 }}
+                >
+                  {actionLoading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text className="text-white font-black uppercase tracking-widest">Approve & Start</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
           </View>
         </Modal>
 
+        {/* --- Reject Modal --- */}
         <Modal visible={rejectModalVisible} transparent animationType="slide">
           <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
             <View className="p-8 rounded-t-[40px]" style={{ backgroundColor: theme.surface }}>
@@ -741,11 +800,11 @@ export default function TrackingScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity 
                     onPress={submitRejection} 
-                    disabled={!rejectReason.trim()} 
+                    disabled={!rejectReason.trim() || actionLoading} 
                     className="flex-[2] h-14 rounded-2xl items-center justify-center" 
-                    style={{ backgroundColor: theme.error, opacity: !rejectReason.trim() ? 0.5 : 1 }}
+                    style={{ backgroundColor: theme.error, opacity: (!rejectReason.trim() || actionLoading) ? 0.5 : 1 }}
                 >
-                  <Text className="text-white font-black uppercase tracking-widest">Confirm Rejection</Text>
+                  {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-black uppercase tracking-widest">Confirm Rejection</Text>}
                 </TouchableOpacity>
               </View>
             </View>
